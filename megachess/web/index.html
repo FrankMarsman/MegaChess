@@ -17,6 +17,7 @@
   <main class="workspace">
     <section class="board-section" aria-label="Game board">
       <div class="board-heading"><div><span class="eyebrow" id="game-mode">YOUR NEXT GREAT GAME</span><h1 id="game-title">Room to think.</h1></div><div class="turn-pill" id="turn-pill"><span class="turn-dot"></span><span id="turn-text">Preparing board</span></div></div>
+      <div id="army-stats" class="army-stats" aria-label="Remaining pieces"></div>
       <div class="board-shell">
         <div class="board-toolbar" aria-label="Board navigation">
           <div class="toolbar-group"><button id="zoom-out" class="icon-button" aria-label="Zoom out" title="Zoom out (−)">−</button><span id="zoom-label">Fit</span><button id="zoom-in" class="icon-button" aria-label="Zoom in" title="Zoom in (+)">＋</button><span class="toolbar-divider"></span><button id="fit-board" class="text-button" title="Show the whole board">Fit board</button><button id="play-view" class="text-button" title="Zoom to readable pieces">Play view</button></div>
@@ -34,14 +35,19 @@
           <span id="occupied-square-colors-help" class="sr-only">Color only occupied squares. Each option lists White's color first, then Black's.</span>
           <span class="occupied-color-legend" id="occupied-color-legend" hidden><span><i id="white-square-swatch" aria-hidden="true"></i>White</span><span><i id="black-square-swatch" aria-hidden="true"></i>Black</span></span>
         </div>
-        <div id="board-viewport" class="board-viewport">
-          <canvas id="board" tabindex="0" role="application" aria-label="Mega Chess board. Use arrow keys to choose a square, Enter to select or move, and Escape to cancel." aria-describedby="board-description"></canvas>
-          <div id="overview-hint" class="overview-hint" hidden><span>THE BIG PICTURE</span>Click an area to zoom in and play.</div>
-          <canvas id="minimap" width="140" height="140" aria-label="Board overview. Click to navigate." hidden></canvas>
-          <div id="board-empty" class="board-empty" hidden><span>♞</span><h2>A bigger game awaits.</h2><p>Choose a formation and make your first move.</p><button class="button primary" id="empty-new-game">Set up a game</button></div>
+        <div class="board-stage">
+          <aside id="captures-left" class="capture-tray" aria-label="Pieces captured by White"></aside>
+          <div id="board-viewport" class="board-viewport">
+            <canvas id="board" tabindex="0" role="application" aria-label="Mega Chess board. Use arrow keys to choose a square, Enter to select or move, and Escape to cancel." aria-describedby="board-description"></canvas>
+            <div id="overview-hint" class="overview-hint" hidden><span>THE BIG PICTURE</span>Click an area to zoom in and play.</div>
+            <canvas id="minimap" width="140" height="140" aria-label="Board overview. Click to navigate." hidden></canvas>
+            <div id="board-empty" class="board-empty" hidden><span>♞</span><h2>A bigger game awaits.</h2><p>Choose a formation and make your first move.</p><button class="button primary" id="empty-new-game">Set up a game</button></div>
+          </div>
+          <aside id="captures-right" class="capture-tray" aria-label="Pieces captured by Black"></aside>
         </div>
         <div class="board-footer"><span id="board-description">Select a piece to see its legal moves.</span><div><label><input type="checkbox" id="guides"> 8×8 guides</label><label><input type="checkbox" id="follow-moves" checked> Follow moves</label></div></div>
       </div>
+      <div id="position-stats" class="position-stats" aria-label="Position statistics"></div>
       <div class="under-board"><span id="game-config-label">MEGA CHESS</span><span>Scroll to zoom · Drag to explore · Click to move</span></div>
       <div class="error-banner" id="error-banner" role="alert" hidden><span id="error-text"></span><button id="dismiss-error" aria-label="Dismiss error">×</button></div>
       <details class="search-panel" id="search-panel">

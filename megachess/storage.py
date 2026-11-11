@@ -321,6 +321,24 @@ class Storage:
                 rows = con.execute("SELECT data FROM moves WHERE game_id=? AND revision>? ORDER BY revision", (gameid, int(after_revision))).fetchall()
         return [json.loads(r["data"]) for r in rows]
 
+    def get_recorded_position(self, gameid, position_index):
+        """Read one replay snapshot without loading the entire move history."""
+        if position_index < 0:
+            raise ValueError("Replay position index must be zero or greater")
+        if position_index == 0:
+            game = self.get_game(gameid)
+            if not game.get("initial_position"):
+                raise ValueError("The initial position is unavailable")
+            return game["initial_position"]
+        with self._connection() as con:
+            row = con.execute(
+                "SELECT data FROM moves WHERE game_id=? ORDER BY revision LIMIT 1 OFFSET ?",
+                (gameid, position_index - 1),
+            ).fetchone()
+        if row is None:
+            raise ValueError("Replay position index is outside the recorded game")
+        return json.loads(row["data"])["position"]
+
     def get_move_summaries(self, gameid):
         """Move diagnostics without materializing thousands of large boards."""
         with self._connection() as con:

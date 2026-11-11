@@ -4,3 +4,38 @@
 @media(max-width:560px){.board-heading{flex-direction:column;align-items:stretch;gap:10px}.board-heading>div:first-child{min-width:0}.board-heading h1{font-size:26px}.turn-pill{align-self:flex-end;max-width:none;overflow:visible;white-space:nowrap}.board-heading .turn-pill{padding:7px 10px}}
 
 .board-appearance{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;padding:9px 15px;background:var(--white);border-bottom:1px solid var(--line);font-size:10px;color:#687466}.board-appearance>label{font-weight:600}.board-appearance>select{max-width:100%;padding:6px 28px 6px 9px;border:1px solid var(--line);border-radius:6px;background:#fcfcf7;color:var(--ink);font-size:11px}.occupied-color-legend{display:flex;gap:13px;margin-left:auto;font-size:10px}.occupied-color-legend>span{display:flex;align-items:center;gap:5px}.occupied-color-legend i{display:inline-block;width:12px;height:12px;border-radius:3px;border:1px solid #20382f25}@media(max-width:560px){.board-appearance{padding:9px 10px;gap:8px}.board-appearance>select{flex:1;min-width:0;padding-right:18px;font-size:10px}.occupied-color-legend{width:100%;justify-content:flex-end}}
+
+/* Compact army summaries stay near the board; captured groups scale to N=13. */
+.army-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 13px}
+.army-stat-card{min-width:0;padding:11px 13px;border:1px solid var(--line);border-radius:9px;background:var(--white)}
+.army-stat-card.white{box-shadow:inset 3px 0 #d4c5a3}.army-stat-card.black{box-shadow:inset 3px 0 #506c5a}
+.army-stat-heading{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:7px}
+.side-label{font-size:9px;font-weight:750;letter-spacing:1.2px;text-transform:uppercase;color:#6f806b}
+.piece-total{font-size:12px;font-weight:650;color:#435e46;font-variant-numeric:tabular-nums}
+.piece-counts{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px}
+.piece-count{display:inline-flex;align-items:center;gap:3px;min-width:0;font-size:11px;color:#63745c;font-variant-numeric:tabular-nums;white-space:nowrap}
+.piece-symbol{display:block;width:23px;height:23px;object-fit:contain;flex-shrink:0}
+.army-stat-detail{margin-top:6px;font-size:9px;color:#96a08d;line-height:1.5}
+.board-stage{display:grid;grid-template-columns:68px minmax(0,1fr) 68px;min-width:0;align-items:stretch;background:#e6eadf}
+.board-stage>.board-viewport{min-width:0;grid-column:2;grid-row:1}
+.capture-tray{min-width:0;padding:17px 8px 12px;background:#f3f5ed;overflow:hidden}
+#captures-left{grid-column:1;grid-row:1;border-right:1px solid #d8dfd0}
+#captures-right{grid-column:3;grid-row:1;border-left:1px solid #d8dfd0}
+.capture-heading{display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center}
+.capture-heading>span{font-size:8px;font-weight:750;letter-spacing:.7px;text-transform:uppercase;line-height:1.4;color:#798a70}
+.capture-heading>strong{font-size:19px;font-weight:500;line-height:1;color:#536b49;font-variant-numeric:tabular-nums}
+.capture-subtitle{font-size:7px;letter-spacing:.6px;line-height:1.5;text-align:center;color:#9aa68e;text-transform:uppercase;margin:5px 0 13px}
+.captured-groups{display:grid;gap:7px}
+.captured-piece{display:grid;grid-template-columns:23px minmax(0,1fr);gap:3px;align-items:center;min-width:0;font-size:10px;color:#6b7b61;font-variant-numeric:tabular-nums;line-height:1.3}
+.captured-piece>span{min-width:0;text-align:right;overflow-wrap:anywhere}
+.capture-empty{font-size:9px;text-align:center;line-height:1.7;color:#a3ad98;margin:12px 0}
+.capture-tray .army-stat-detail{font-size:8px;text-align:center;margin-top:13px;overflow-wrap:anywhere}
+.position-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin:12px 0 0;padding:4px 0;border:1px solid var(--line);border-radius:8px;background:#f9faf4}
+.position-stat{min-width:0;padding:8px 12px;border-left:1px solid var(--line)}
+.position-stat:nth-child(3n+1){border-left:0}
+.position-stat>span{display:block;font-size:8px;letter-spacing:.35px;color:#96a18c;line-height:1.5;margin-bottom:3px}
+.position-stat>strong{display:block;font-size:12px;font-weight:550;color:#5d7752;line-height:1.5;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.position-stat.positive>strong{color:#416c4b}.position-stat.negative>strong{color:#946b56}
+@media(min-width:1500px){.position-stats{grid-template-columns:repeat(6,minmax(0,1fr))}.position-stat:nth-child(3n+1){border-left:1px solid var(--line)}.position-stat:first-child{border-left:0}}
+@media(max-width:1100px) and (min-width:851px){.board-stage{grid-template-columns:58px minmax(0,1fr) 58px}.capture-tray{padding-left:5px;padding-right:5px}.captured-piece{grid-template-columns:21px minmax(0,1fr);font-size:9px}.captured-piece .piece-symbol{width:21px;height:21px}.piece-counts{gap:3px 6px}.army-stat-card{padding:10px}.piece-count{font-size:10px}.piece-count .piece-symbol{width:21px;height:21px}}
+@media(max-width:560px){.army-stats{gap:7px;margin-bottom:11px}.army-stat-card{padding:9px 9px 8px}.army-stat-heading{margin-bottom:5px;gap:5px}.side-label{font-size:8px;letter-spacing:.7px}.piece-total{font-size:10px}.piece-counts{gap:2px 7px}.piece-count{font-size:10px;gap:2px}.piece-count .piece-symbol{width:21px;height:21px}.army-stat-detail{font-size:8px;margin-top:5px}.board-stage{grid-template-columns:repeat(2,minmax(0,1fr))}.board-stage>.board-viewport{grid-column:1/-1;grid-row:1}.capture-tray{padding:10px 10px 9px;border-top:1px solid #d8dfd0}#captures-left{grid-column:1;grid-row:2;border-right:1px solid #d8dfd0}#captures-right{grid-column:2;grid-row:2;border-left:0}.capture-heading{flex-direction:row;justify-content:space-between;align-items:center;gap:6px;text-align:left}.capture-heading>span{font-size:8px}.capture-heading>strong{font-size:13px}.capture-subtitle{text-align:left;display:block;font-size:7px;margin:3px 0 7px}.captured-groups{display:flex;align-items:center;flex-wrap:wrap;gap:5px 8px}.captured-piece{display:inline-flex;gap:2px;font-size:9px}.captured-piece .piece-symbol{width:20px;height:20px}.captured-piece>span{text-align:left}.capture-empty{text-align:left;margin:4px 0;font-size:8px}.capture-tray .army-stat-detail{text-align:left;margin-top:5px}.position-stats{margin-top:10px}.position-stat{padding:7px 9px}.position-stat>span{font-size:7px}.position-stat>strong{font-size:11px}}

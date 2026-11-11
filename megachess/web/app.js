@@ -1,3 +1,5 @@
+import {countArmies, captureTimeline, materialValue} from './board-statistics.mjs';
+
 const $ = (id) => document.getElementById(id);
 const API = '/api/v1';
 const featureNames = {pawn:'Pawn',knight:'Knight',bishop:'Bishop',rook:'Rook',queen:'Queen',advancement:'Pawn progress',activity:'Central activity',approach:'King approach',safety:'King safety'};
@@ -8,6 +10,8 @@ const canvas = $('board'), ctx = canvas.getContext('2d'), mini = $('minimap'), m
 const camera = {cell:20,x:0,y:0,width:0,height:0,fitted:true,flipped:false};
 const state = {game:null,profiles:[],moves:[],search:null,searchReceived:0,preview:null,initial:null,selected:null,legal:[],focus:null,replay:null,polling:false,legalRequest:0,previewRequest:0,lastRevision:-1,events:[],eventKeys:new Set(),lastSearchKey:null,lastSearchDepth:0,history:[],batches:[],evaluationRevision:null};
 const pieceImages = new Map();
+const positionStatisticsCache = new Map();
+let capturesHistory = [], positionStatisticsPending = new Set(), statisticsRetryAt = 0;
 const occupiedSquarePalettes = {
   none:null,
   'red-blue':{white:'#ef9195',black:'#91b8ee'},
@@ -112,7 +116,7 @@ async function loadGame(id){const result=await api(`/games/${id}`);await setGame
 async function setGame(game,moves=[],reset=false){
   const changed=state.game?.id!==game.id;if(changed||reset){state.moves=moves;state.selected=null;state.legal=[];state.focus=null;state.replay=null;state.search=null;state.events=[];state.eventKeys.clear();state.lastSearchKey=null;state.lastSearchDepth=0;state.initial=null;state.evaluationRevision=null;state.lastSearchError=null;}
   state.game=game;state.lastRevision=game.revision??0;
-  if(changed||reset){fillConfig(game.config);state.initial=game.initial_position;if(!state.initial){const result=await api('/preview','POST',{config:game.config});state.initial=result.position||result;}fitBoard();}
+  if(changed||reset){capturesHistory=[];fillConfig(game.config);state.initial=game.initial_position;if(!state.initial){const result=await api('/preview','POST',{config:game.config});state.initial=result.position||result;}fitBoard();}
   mergeMoves(moves);if(changed||reset){const saved=state.moves.findLast(m=>m.stats&&m.stats.nodes!==undefined);if(saved){const color=-(saved.position?.turn||1),profile=playerFor(color)?.profile;receiveSearch({...saved.stats,thinking:false,reason:saved.stats.reason||'saved summary',profile_name:saved.stats.profile_name||profile?.name});}}renderGame();requestRender();
 }
 function mergeMoves(moves){if(!Array.isArray(moves)||!moves.length)return;const byRevision=new Map(state.moves.map((m,i)=>[m.revision??i+1,m]));for(const [i,m] of moves.entries())byRevision.set(m.revision??i+1,m);state.moves=[...byRevision.values()].sort((a,b)=>(a.revision??0)-(b.revision??0));}
@@ -124,7 +128,41 @@ function renderGame(){const game=state.game;if(!game)return;if(game.search_error
   $('turn-text').textContent=turnText;$('turn-pill').classList.toggle('black',pos.turn===-1);$('turn-pill').classList.toggle('finished',gameFinished());renderPlayer(-1);renderPlayer(1);
   $('mode-note').textContent=game.search_error?`Search paused: ${game.search_error}`:gameFinished()?game.reason?String(game.reason).replaceAll('_',' '):'This game is saved in your library.':mode.startsWith('Two players')?'Take turns at the same keyboard. The board stays facing the same way until you flip it.':mode==='AI versus AI'?'Two minds, one very big board. Pause, step, or open the search room to follow their thinking.':'Select one of your pieces, then choose a highlighted square. Your AI opponent will take the next turn.';
   const hasAI=game.players.white.kind==='ai'||game.players.black.kind==='ai';$('pause-game').disabled=!hasAI||gameFinished();$('pause-game').textContent=game.paused?'▶ Resume':'Ⅱ Pause';$('step-game').disabled=!hasAI||gameFinished()||!game.paused;$('move-now').disabled=gameFinished()||playerFor(game.position.turn)?.kind!=='ai'||game.paused;$('resign-game').disabled=gameFinished()||playerFor(game.position.turn)?.kind!=='human';$('draw-game').disabled=gameFinished();$('export-game').href=`${API}/games/${game.id}/export`;$('move-count').textContent=`${Math.ceil(state.moves.length/2)} move${state.moves.length>2||state.moves.length===0?'s':''}`;
-  renderMoves();renderSearch();if($('evaluation-panel').open&&state.evaluationRevision!==`${game.id}:${game.revision}`)safely(refreshEvaluation);
+  renderMoves();renderBoardStatistics();renderSearch();if($('evaluation-panel').open&&state.evaluationRevision!==`${game.id}:${game.revision}`)safely(refreshEvaluation);
+}
+
+function materialText(value){return new Intl.NumberFormat('en',{maximumFractionDigits:1}).format(Math.abs(value)<.0001?0:value);}
+function statisticKey(){return state.game?`${state.game.id}:${state.replay===null?'live:'+state.game.revision:'replay:'+state.replay}`:'';}
+function pieceGroupMarkup(counts,color,captured=false){const types=captured?[5,4,3,2,1]:[6,5,4,3,2,1];return types.filter(kind=>!captured||counts[kind]).map(kind=>{const label=`${count(counts[kind])} ${colorName(color)} ${pieceNames[kind]}${counts[kind]===1?'':'s'}`;return `<span class="${captured?'captured-piece':'piece-count'}" title="${esc(label)}" aria-label="${esc(label)}"><img class="piece-symbol" src="${pieceImages.get(color*kind)?.src||''}" alt="" aria-hidden="true"><span>${count(counts[kind])}</span></span>`;}).join('');}
+function renderBoardStatistics(){
+  const pos=currentPosition();if(!state.game||!pos||!state.initial)return;
+  const armies=countArmies(pos.board),ordered=camera.flipped?[-1,1]:[1,-1];
+  $('army-stats').innerHTML=ordered.map(color=>{const army=armies[color===1?'white':'black'];return `<article class="army-stat-card ${color===1?'white':'black'}"><div class="army-stat-heading"><span class="side-label">${colorName(color)}</span><strong class="piece-total">${count(army.total)} pieces</strong></div><div class="piece-counts">${pieceGroupMarkup(army.counts,color)}</div><div class="army-stat-detail">${materialText(army.material)} material · remaining on board</div></article>`;}).join('');
+  capturesHistory=captureTimeline(state.initial,state.moves,capturesHistory);
+  const captured=capturesHistory[state.replay===null?state.moves.length:state.replay]||capturesHistory[0];
+  for(const [index,color] of ordered.entries()){
+    const side=color===1?'white':'black',groups=captured[side],total=groups.reduce((a,b)=>a+b,0),tray=$(index===0?'captures-left':'captures-right');
+    tray.setAttribute('aria-label',`Pieces captured by ${colorName(color)}`);
+    tray.innerHTML=`<div class="capture-heading"><span>${colorName(color)}</span><strong>${count(total)}</strong></div><div class="capture-subtitle">Captured</div><div class="captured-groups">${pieceGroupMarkup(groups,-color,true)}</div>${total?'':'<div class="capture-empty">None yet</div>'}<div class="army-stat-detail" title="Material value of the pieces captured by ${colorName(color)}">${materialText(materialValue(groups))} material</div>`;
+  }
+  const stats=positionStatisticsCache.get(statisticKey()),balance=armies.white.material-armies.black.material,occupied=armies.white.total+armies.black.total,captures=[...captured.white,...captured.black].reduce((a,b)=>a+b,0);
+  const materialEdge=Math.abs(balance)<.0001?'Even':`${balance>0?'White':'Black'} +${materialText(Math.abs(balance))}`;
+  const chips=[
+    {label:`${colorName(pos.turn)} legal moves`,value:stats?count(stats.legal_moves):'…',title:'All legal moves for the player to move; promotion choices count separately.'},
+    {label:'Captures available',value:stats?count(stats.legal_captures):'…',title:`Legal capturing moves available to ${colorName(pos.turn)}, including en passant.`},
+    {label:state.replay===null?'Current move':'Replay move',value:count(Math.floor(pos.ply/2)+1),title:`${count(pos.ply)} plies played`},
+    {label:'Material edge',value:materialEdge,title:'Material values: pawn 1, knight 3.2, bishop 3.3, rook 5, queen 9; kings excluded.'},
+    {label:'Pieces captured',value:count(captures),title:'Actual captures since the saved starting position; promotions are tracked separately.'},
+    {label:'Board occupied',value:`${(occupied/(pos.size*pos.size)*100).toFixed(1)}%`,title:`${count(occupied)} occupied · ${count(pos.size*pos.size-occupied)} empty squares`}
+  ];
+  $('position-stats').innerHTML=chips.map(chip=>`<div class="position-stat" title="${esc(chip.title)}"><span>${esc(chip.label)}</span><strong>${esc(chip.value)}</strong></div>`).join('');
+  if(!stats&&!positionStatisticsPending.has(statisticKey())&&Date.now()>=statisticsRetryAt)void refreshPositionStatistics();
+}
+async function refreshPositionStatistics(){
+  const key=statisticKey(),id=state.game.id,revision=state.game.revision,index=state.replay;positionStatisticsPending.add(key);
+  try{const query=new URLSearchParams({revision:String(revision)});if(index!==null)query.set('position_index',String(index));const result=await api(`/games/${id}/statistics?${query}`);positionStatisticsCache.set(key,result);if(positionStatisticsCache.size>128)positionStatisticsCache.delete(positionStatisticsCache.keys().next().value);if(statisticKey()===key)renderBoardStatistics();}
+  catch{statisticsRetryAt=Date.now()+1000;}
+  finally{positionStatisticsPending.delete(key);}
 }
 function renderMoves(){const list=$('move-list');if(!state.moves.length){list.innerHTML='<div class="empty-state"><span>↗</span>Your first move starts the story.</div>';}else{const rows=[];for(let i=0;i<state.moves.length;i+=2){const make=(m,j)=>m?`<button class="move-entry ${state.replay===j+1?'selected':''}" data-replay="${j+1}">${esc(moveText(m.move,state.game.position.size))}</button>`:'<span></span>';rows.push(`<div class="move-row"><span class="move-number">${Math.floor(i/2)+1}.</span>${make(state.moves[i],i)}${make(state.moves[i+1],i+1)}</div>`);}const oldScroll=list.scrollTop,atEnd=list.scrollHeight-oldScroll-list.clientHeight<35;list.innerHTML=rows.join('');if(atEnd&&state.replay===null)list.scrollTop=list.scrollHeight;else list.scrollTop=oldScroll;}
   $('replay-label').textContent=state.replay===null?'Live game':`Position ${state.replay} / ${state.moves.length}`;$('replay-start').disabled=!state.moves.length;$('replay-prev').disabled=state.replay===0||!state.moves.length;$('replay-next').disabled=state.replay===null||state.replay>=state.moves.length;$('replay-live').disabled=state.replay===null;
@@ -199,7 +237,7 @@ $('setup-n').addEventListener('change',()=>{updateRangeOptions();safely(updatePr
 for(const id of ['setup-king','setup-range','setup-draw'])$(id).addEventListener('change',()=>safely(updatePreview));
 for(const radio of document.querySelectorAll('input[name="setup"]'))radio.addEventListener('change',()=>safely(updatePreview));
 for(const id of ['setup-white','setup-black','setup-white-time','setup-black-time'])$(id).addEventListener('change',updateSetupMode);
-$('zoom-in').addEventListener('click',()=>zoomAt(1.4));$('zoom-out').addEventListener('click',()=>zoomAt(1/1.4));$('fit-board').addEventListener('click',fitBoard);$('play-view').addEventListener('click',playView);$('flip-board').addEventListener('click',()=>{const pos=currentPosition();if(!pos)return;camera.flipped=!camera.flipped;if(camera.fitted)fitBoard();else focusSquare(state.selected??state.focus??kingSquare(pos.turn),camera.cell);requestRender();});$('focus-last').addEventListener('click',()=>focusSquare(state.moves.at(-1)?.move?.to??kingSquare(),Math.max(camera.cell,32)));$('find-king').addEventListener('click',()=>focusSquare(kingSquare(),40));$('guides').addEventListener('change',requestRender);
+$('zoom-in').addEventListener('click',()=>zoomAt(1.4));$('zoom-out').addEventListener('click',()=>zoomAt(1/1.4));$('fit-board').addEventListener('click',fitBoard);$('play-view').addEventListener('click',playView);$('flip-board').addEventListener('click',()=>{const pos=currentPosition();if(!pos)return;camera.flipped=!camera.flipped;renderBoardStatistics();if(camera.fitted)fitBoard();else focusSquare(state.selected??state.focus??kingSquare(pos.turn),camera.cell);requestRender();});$('focus-last').addEventListener('click',()=>focusSquare(state.moves.at(-1)?.move?.to??kingSquare(),Math.max(camera.cell,32)));$('find-king').addEventListener('click',()=>focusSquare(kingSquare(),40));$('guides').addEventListener('change',requestRender);
 $('dismiss-error').addEventListener('click',clearError);$('pause-game').addEventListener('click',()=>safely(()=>controlGame(state.game?.paused?'resume':'pause')));$('step-game').addEventListener('click',()=>safely(()=>controlGame('step')));$('move-now').addEventListener('click',()=>safely(()=>controlGame('move_now')));$('resign-game').addEventListener('click',()=>safely(()=>controlGame('resign')));$('draw-game').addEventListener('click',()=>safely(()=>controlGame('draw')));$('view-delay').addEventListener('change',()=>safely(()=>controlGame('set_delay',{value:number($('view-delay').value,.5)})));
 $('evaluation-panel').addEventListener('toggle',()=>{if($('evaluation-panel').open)safely(refreshEvaluation);});
 $('move-list').addEventListener('click',event=>{const button=event.target.closest('[data-replay]');if(button)setReplay(number(button.dataset.replay));});$('replay-start').addEventListener('click',()=>setReplay(0));$('replay-prev').addEventListener('click',()=>setReplay((state.replay??state.moves.length)-1));$('replay-next').addEventListener('click',()=>setReplay((state.replay??state.moves.length)+1));$('replay-live').addEventListener('click',()=>setReplay(null));

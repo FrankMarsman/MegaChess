@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from . import __version__
 from .engine import Position, extract_features, iter_legal_moves, new_position
 from .runtime import Runtime
+from .statistics import StatisticsCache
 
 
 def default_data_dir():
@@ -37,6 +38,7 @@ def create_app(data_dir=None, start_workers=True):
 
     app = FastAPI(title="Mega Chess", version=__version__, lifespan=lifespan)
     web = Path(__file__).parent / "web"
+    statistics_cache = StatisticsCache()
 
     def runtime(request):
         return request.app.state.runtime
@@ -94,6 +96,19 @@ def create_app(data_dir=None, start_workers=True):
             return {"moves": [], "revision": game["revision"]}
         position = Position.from_dict(game["position"])
         return {"moves": list(iter_legal_moves(position, from_square)), "revision": game["revision"]}
+
+    @app.get("/api/v1/games/{game_id}/statistics")
+    def game_statistics(game_id: str, request: Request, revision: int | None = None,
+                        position_index: int | None = None):
+        store = runtime(request).storage
+        game = store.get_game(game_id)
+        if revision is not None and revision != game["revision"]:
+            raise ValueError("Game changed; refresh its current position")
+        position = (game["position"] if position_index is None
+                    else store.get_recorded_position(game_id, position_index))
+        stats = statistics_cache.get((game_id, game["revision"], position_index), position)
+        return {"game_id": game_id, "revision": game["revision"],
+                "position_index": position_index, **stats}
 
     @app.post("/api/v1/games/{game_id}/move")
     def move(game_id: str, request: Request, payload: dict = Body(...)):
