@@ -47,6 +47,11 @@
         </div>
         <div class="board-footer"><span id="board-description">Select a piece to see its legal moves.</span><div><label><input type="checkbox" id="guides"> 8×8 guides</label><label><input type="checkbox" id="follow-moves" checked> Follow moves</label></div></div>
       </div>
+      <section class="game-timeline" aria-label="Game replay timeline">
+        <div class="timeline-heading"><label for="game-timeline-slider">Game timeline</label><span id="timeline-position">Live · 0 steps</span></div>
+        <input id="game-timeline-slider" class="timeline-slider" type="range" min="0" max="0" step="1" value="0" aria-valuetext="Starting position" disabled>
+        <div class="timeline-actions"><button id="timeline-play" class="button secondary" type="button" aria-label="Play replay" aria-pressed="false" disabled>▶ Play</button><button id="timeline-live" class="small-link" type="button" aria-label="Return timeline to live game" disabled>Live ↗</button><span id="timeline-note">No steps recorded yet.</span></div>
+      </section>
       <div id="position-stats" class="position-stats" aria-label="Position statistics"></div>
       <div class="under-board"><span id="game-config-label">MEGA CHESS</span><span>Scroll to zoom · Drag to explore · Click to move</span></div>
       <div class="error-banner" id="error-banner" role="alert" hidden><span id="error-text"></span><button id="dismiss-error" aria-label="Dismiss error">×</button></div>

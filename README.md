@@ -34,7 +34,9 @@ Use Fit for an overview, Play View for readable pieces, the wheel or pinch to zo
 
 Compact army summaries above the board show remaining pieces by symbol and count. The trays beside the board show what each player has captured, grouped by the actual victim's type; on phones they move beneath the board. The lower strip shows legal moves for the player to move, available capturing moves, move number, material edge, total captures, and board occupancy. All counts follow replay positions. En passant and captured promoted pieces are included correctly. Material uses the fixed conventional values listed below, independently of learned AI weights.
 
-Frontend bookkeeping checks use Node's built-in test runner (development only): `node --test tests/frontend-statistics.test.mjs`.
+Frontend bookkeeping checks use Node's built-in test runner (development only): `node --test tests/*.test.mjs`.
+
+Use the **Game timeline** slider below the board to inspect any recorded step, including the starting position. **Play** loops through the history at one step per second and turns into **Stop**, which freezes the displayed step. The loop includes new moves as they are recorded. Scrubbing or using the other replay controls stops playback; **Live** returns to the latest position. Replay only changes the view, so an AI match can keep playing while you watch its history. Captured-piece trays and position statistics follow the displayed step.
 
 ### Rules
 
