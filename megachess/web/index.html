@@ -22,6 +22,18 @@
           <div class="toolbar-group"><button id="zoom-out" class="icon-button" aria-label="Zoom out" title="Zoom out (−)">−</button><span id="zoom-label">Fit</span><button id="zoom-in" class="icon-button" aria-label="Zoom in" title="Zoom in (+)">＋</button><span class="toolbar-divider"></span><button id="fit-board" class="text-button" title="Show the whole board">Fit board</button><button id="play-view" class="text-button" title="Zoom to readable pieces">Play view</button></div>
           <div class="toolbar-group"><button id="flip-board" class="text-button" title="Flip the board">⇅ <span>Flip</span></button><button id="focus-last" class="icon-button" title="Focus last move" aria-label="Focus last move">◎</button><button id="find-king" class="icon-button" title="Find the current player's king" aria-label="Find king">♔</button></div>
         </div>
+        <div class="board-appearance">
+          <label for="occupied-square-colors">Piece squares</label>
+          <select id="occupied-square-colors" aria-describedby="occupied-square-colors-help">
+            <option value="none" selected>None</option>
+            <option value="red-blue">White red · Black blue</option>
+            <option value="blue-red">White blue · Black red</option>
+            <option value="amber-violet">White amber · Black violet</option>
+            <option value="teal-orange">White teal · Black orange</option>
+          </select>
+          <span id="occupied-square-colors-help" class="sr-only">Color only occupied squares. Each option lists White's color first, then Black's.</span>
+          <span class="occupied-color-legend" id="occupied-color-legend" hidden><span><i id="white-square-swatch" aria-hidden="true"></i>White</span><span><i id="black-square-swatch" aria-hidden="true"></i>Black</span></span>
+        </div>
         <div id="board-viewport" class="board-viewport">
           <canvas id="board" tabindex="0" role="application" aria-label="Mega Chess board. Use arrow keys to choose a square, Enter to select or move, and Escape to cancel." aria-describedby="board-description"></canvas>
           <div id="overview-hint" class="overview-hint" hidden><span>THE BIG PICTURE</span>Click an area to zoom in and play.</div>

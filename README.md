@@ -30,6 +30,8 @@ Choose Human or an AI separately for White and Black. Two Humans means taking tu
 
 Use Fit for an overview, Play View for readable pieces, the wheel or pinch to zoom, and drag to pan. A small overview map helps navigate. Click a piece and then a legal destination. The board toolbar can locate either king or the last move. Arrow keys navigate squares, Enter selects/moves, and Escape cancels selection.
 
+**Piece squares** above the board optionally colors occupied squares. It defaults to **None**; choose red/blue, blue/red, amber/violet, or teal/orange, with White's color listed first. The same colors appear in the overview map and starting-formation preview.
+
 ### Rules
 
 - Odd N from 3 through 13 produces an **8N × 8N** board; N=1 is a reference mode with castling disabled.
