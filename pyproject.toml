@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "megachess"
+version = "0.1.0"
+description = "A playable, configurable chess world with observable, learning Python AIs"
+requires-python = ">=3.12"
+dependencies = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "httpx>=0.27,<1"]
+
+[project.scripts]
+megachess = "megachess.__main__:main"
+
+[tool.setuptools.package-data]
+megachess = ["web/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+

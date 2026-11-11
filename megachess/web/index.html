@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#173d32">
+  <meta name="description" content="A bigger board. A new kind of chess. Play, explore, and train your own Mega Chess AIs.">
+  <title>Mega Chess — A bigger game</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="masthead">
+    <a class="brand" href="/" aria-label="Mega Chess home"><span class="brand-mark" aria-hidden="true">♞</span><span>Mega<span class="brand-light">Chess</span><small>A BIGGER GAME</small></span></a>
+    <div class="header-right"><span class="local-badge"><i></i> LOCAL STUDIO</span><button id="new-game-button" class="button primary">＋ New game</button></div>
+  </header>
+
+  <main class="workspace">
+    <section class="board-section" aria-label="Game board">
+      <div class="board-heading"><div><span class="eyebrow" id="game-mode">YOUR NEXT GREAT GAME</span><h1 id="game-title">Room to think.</h1></div><div class="turn-pill" id="turn-pill"><span class="turn-dot"></span><span id="turn-text">Preparing board</span></div></div>
+      <div class="board-shell">
+        <div class="board-toolbar" aria-label="Board navigation">
+          <div class="toolbar-group"><button id="zoom-out" class="icon-button" aria-label="Zoom out" title="Zoom out (−)">−</button><span id="zoom-label">Fit</span><button id="zoom-in" class="icon-button" aria-label="Zoom in" title="Zoom in (+)">＋</button><span class="toolbar-divider"></span><button id="fit-board" class="text-button" title="Show the whole board">Fit board</button><button id="play-view" class="text-button" title="Zoom to readable pieces">Play view</button></div>
+          <div class="toolbar-group"><button id="flip-board" class="text-button" title="Flip the board">⇅ <span>Flip</span></button><button id="focus-last" class="icon-button" title="Focus last move" aria-label="Focus last move">◎</button><button id="find-king" class="icon-button" title="Find the current player's king" aria-label="Find king">♔</button></div>
+        </div>
+        <div id="board-viewport" class="board-viewport">
+          <canvas id="board" tabindex="0" role="application" aria-label="Mega Chess board. Use arrow keys to choose a square, Enter to select or move, and Escape to cancel." aria-describedby="board-description"></canvas>
+          <div id="overview-hint" class="overview-hint" hidden><span>THE BIG PICTURE</span>Click an area to zoom in and play.</div>
+          <canvas id="minimap" width="140" height="140" aria-label="Board overview. Click to navigate." hidden></canvas>
+          <div id="board-empty" class="board-empty" hidden><span>♞</span><h2>A bigger game awaits.</h2><p>Choose a formation and make your first move.</p><button class="button primary" id="empty-new-game">Set up a game</button></div>
+        </div>
+        <div class="board-footer"><span id="board-description">Select a piece to see its legal moves.</span><div><label><input type="checkbox" id="guides"> 8×8 guides</label><label><input type="checkbox" id="follow-moves" checked> Follow moves</label></div></div>
+      </div>
+      <div class="under-board"><span id="game-config-label">MEGA CHESS</span><span>Scroll to zoom · Drag to explore · Click to move</span></div>
+      <div class="error-banner" id="error-banner" role="alert" hidden><span id="error-text"></span><button id="dismiss-error" aria-label="Dismiss error">×</button></div>
+      <details class="search-panel" id="search-panel">
+        <summary><span><span class="search-indicator" id="search-indicator"></span>AI search room <small id="search-summary">A window into the thinking.</small></span><span class="chevron">⌄</span></summary>
+        <div class="search-content">
+          <div class="search-progress"><div><strong id="search-ai">Waiting for a search</strong><span id="search-clock">—</span></div><progress id="search-progress" max="1" value="0"></progress></div>
+          <div class="search-stats" id="search-stats"><div><span>Positions</span><strong>—</strong></div><div><span>Depth completed</span><strong>—</strong></div><div><span>Branches cut</span><strong>—</strong></div><div><span>Cache hits</span><strong>—</strong></div></div>
+          <div class="search-line"><span>PREFERRED LINE</span><code id="search-pv">A legal move will appear here when the AI starts thinking.</code></div>
+          <div class="search-log" id="search-log" role="log" aria-label="AI search events"><div class="log-empty">Search events, budgets, and completed depths appear here.</div></div>
+        </div>
+      </details>
+    </section>
+
+    <aside class="sidebar" aria-label="Game studio">
+      <nav class="tabs" aria-label="Studio sections"><button class="tab active" data-tab="play">Play</button><button class="tab" data-tab="profiles">AI players</button><button class="tab" data-tab="training">Training</button><button class="tab" data-tab="history">Games</button></nav>
+
+      <section class="tab-panel" id="tab-play">
+        <div class="panel-section"><div class="section-heading"><span class="eyebrow">AT THE TABLE</span><button class="small-link" id="edit-setup">New setup ↗</button></div><div class="player-card" id="black-player"></div><div class="player-separator">VERSUS</div><div class="player-card" id="white-player"></div><p class="mode-note" id="mode-note">Choose who takes each side.</p></div>
+        <div class="panel-section game-controls"><div class="control-row"><button id="pause-game" class="button secondary">Ⅱ Pause</button><button id="step-game" class="button secondary">→ Step</button><button id="move-now" class="button secondary">Move now</button></div><label class="inline-field" for="view-delay">Pause between AI moves <span><input id="view-delay" type="number" min="0" max="10" step="0.25" value="0.5"> sec</span></label><div class="quiet-actions"><button id="resign-game">Resign</button><button id="draw-game">Agree a draw</button><a id="export-game" href="#">Export game ↗</a></div></div>
+        <div class="panel-section moves-section"><div class="section-heading"><span class="eyebrow">THE STORY SO FAR</span><span class="counter" id="move-count">0 moves</span></div><div id="move-list" class="move-list" aria-label="Move history"><div class="empty-state"><span>↗</span>Your first move starts the story.</div></div><div class="replay-controls"><button id="replay-start" aria-label="First position">|←</button><button id="replay-prev" aria-label="Previous position">←</button><span id="replay-label">Live game</span><button id="replay-next" aria-label="Next position">→</button><button id="replay-live" aria-label="Return to live game">→|</button></div></div>
+        <details class="evaluation-panel" id="evaluation-panel"><summary>What makes this position valuable? <span>⌄</span></summary><p class="small-muted">Live position · contributions shown from White's perspective. Positive values favor White.</p><div id="evaluation-values" class="evaluation-values"></div></details>
+        <div class="tip-card"><span>MAKE ROOM FOR POSSIBILITY</span><p>A small move can change a very big board. Use <strong>Play view</strong> to get closer.</p></div>
+      </section>
+
+      <section class="tab-panel" id="tab-profiles" hidden>
+        <div class="panel-section"><span class="eyebrow">YOUR AI PLAYERS</span><h2>Different minds.<br>Different games.</h2><p class="muted">Tune a personality. Every match keeps its own frozen version.</p><label class="field">Player<select id="profile-select"></select></label><div id="profile-version" class="version-note"></div><form id="profile-form"><label class="field">Name<input id="profile-name" required maxlength="60"></label><div class="section-heading"><span class="eyebrow">POSITION WEIGHTS</span><span class="small-muted">Editable</span></div><div id="weight-fields" class="weight-grid"></div><div class="form-grid"><label class="field">Search<select id="profile-search"><option value="selective">Selective · deeper</option><option value="full">Full-width · baseline</option></select></label><label class="field">Root candidates<input id="profile-root-width" type="number" min="1" max="10000" value="48"></label><label class="field">Other candidates<input id="profile-width" type="number" min="1" max="10000" value="16"></label><label class="field">Exploration<input id="profile-exploration" type="number" min="0" max="1" step="0.005"></label><label class="field">Quiescence depth<input id="profile-qdepth" type="number" min="0" max="8" value="2"></label><label class="field">Quiescence candidates<input id="profile-qwidth" type="number" min="1" max="10000" value="8"></label></div><label class="check-field"><input id="profile-learning" type="checkbox" checked> Learn between completed games</label><div class="form-grid"><label class="field">Learning rate<input id="profile-rate" type="number" min="0" max="1" step="0.001"></label><label class="field">Trace λ<input id="profile-lambda" type="number" min="0" max="1" step="0.05" value="0.7"></label></div><div class="control-row"><button class="button primary" type="submit">Save version</button><button class="button secondary" id="clone-profile" type="button">Clone</button><button class="small-link" id="reset-profile" type="button">Reset</button></div></form><p id="profile-feedback" class="feedback" role="status"></p><details class="profile-versions" id="profile-versions-panel"><summary>Learning &amp; version history</summary><p class="small-muted">Inspect an earlier or learned version. Saving its weights creates a new editable base version.</p><div id="profile-versions-list"></div></details></div>
+      </section>
+
+      <section class="tab-panel" id="tab-training" hidden>
+        <div class="panel-section"><span class="eyebrow">THE PRACTICE GROUND</span><h2>Let the games<br>teach the players.</h2><p class="muted">Background self-play uses the current setup. Your live game gets priority.</p><form id="batch-form"><div class="form-grid"><label class="field">First AI<select id="batch-white"></select></label><label class="field">Second AI<select id="batch-black"></select></label><label class="field">Games<input id="batch-games" type="number" min="2" max="10000" step="2" value="100"></label><label class="field">Nodes per move<input id="batch-nodes" type="number" min="10" max="10000000" value="5000"></label><label class="field">Ply safety limit<input id="batch-plies" type="number" min="2" max="100000" value="1000"></label><label class="field">Workers<input id="batch-workers" type="number" min="1" max="4" value="2"></label><label class="field">Experiment seed<input id="batch-seed" type="number" min="0" max="2147483647" value="1"></label></div><label class="check-field"><input id="batch-learning" type="checkbox" checked> Learn from completed games</label><p class="small-muted">Colors alternate in matched pairs. Turn learning off for frozen-profile benchmarks.</p><div class="control-row"><button class="button primary" type="submit">Start batch</button><button class="button secondary" id="pilot-batch" type="button">Try 2-game pilot</button></div></form></div><div class="panel-section"><div class="section-heading"><span class="eyebrow">EXPERIMENTS</span><button class="small-link" id="refresh-batches">Refresh ↻</button></div><div id="batch-list" class="batch-list"><p class="muted">Your experiments will appear here.</p></div></div><div class="panel-section"><a class="small-link" href="/api/v1/training/export" download>Export training data ↗</a></div>
+      </section>
+
+      <section class="tab-panel" id="tab-history" hidden>
+        <div class="panel-section"><span class="eyebrow">THE GAME LIBRARY</span><h2>Every game<br>has a history.</h2><p class="muted">Saved locally, move by move. Reopen a game to continue or replay it.</p><div class="control-row"><button id="refresh-history" class="button secondary">Refresh games</button><button id="backup-data" class="button secondary">Back up data</button></div><p id="backup-feedback" class="feedback" role="status"></p><div id="history-list" class="history-list"></div><button id="load-more-history" class="button secondary" hidden>Load older games</button></div>
+      </section>
+    </aside>
+  </main>
+  <footer class="site-footer"><span>MEGA CHESS</span><span>Play a little. Think bigger.</span><span id="connection-status">Connecting to your studio…</span></footer>
+  <div id="announcer" class="sr-only" aria-live="polite"></div>
+
+  <dialog id="new-game-dialog" class="setup-dialog">
+    <form id="new-game-form"><div class="dialog-heading"><div><span class="eyebrow">A WORLD OF POSSIBILITIES</span><h2>Make it your game.</h2></div><button class="close-button" id="close-setup" type="button" aria-label="Close setup">×</button></div>
+      <div class="setup-layout"><div class="setup-fields"><div class="form-grid"><label class="field">Board multiplier N<select id="setup-n"><option value="1">1 · 8 × 8 reference</option><option value="3" selected>3 · 24 × 24</option><option value="5">5 · 40 × 40</option><option value="7">7 · 56 × 56</option><option value="9">9 · 72 × 72</option><option value="11">11 · 88 × 88</option><option value="13">13 · 104 × 104</option></select></label><label class="field">Sliding range<select id="setup-range"><option value="">Unlimited</option></select></label></div>
+      <fieldset class="formation-options"><legend>Starting formation</legend><label class="formation-option"><input type="radio" name="setup" value="blocks" checked><span class="formation-icon">▦</span><span><strong>Block expansion</strong><small>Each piece becomes an N × N formation.</small></span></label><label class="formation-option"><input type="radio" name="setup" value="rows"><span class="formation-icon">▤</span><span><strong>Repeated rows</strong><small>The familiar two ranks, side by side.</small></span></label></fieldset>
+      <div class="form-grid"><label class="field">King placement<select id="setup-king"><option value="original">Original king-block center</option><option value="center">Center file</option></select></label><label class="field">No-progress draw<input id="setup-draw" type="number" min="1" max="10000" placeholder="Disabled"></label></div><p class="small-muted">Sliding range applies to rooks, bishops, and queens. One king per side. Castling is disabled.</p>
+      <div class="player-setup"><div class="form-grid"><label class="field">White player<select id="setup-white"></select></label><label class="field">Black player<select id="setup-black"></select></label><label class="field">White max thinking time<select id="setup-white-time"><option value="2">2 seconds</option><option value="5">5 seconds</option><option value="10">10 seconds</option><option value="30">30 seconds</option><option value="60">60 seconds</option><option value="custom">Custom…</option></select></label><label class="field">Black max thinking time<select id="setup-black-time"><option value="2">2 seconds</option><option value="5">5 seconds</option><option value="10">10 seconds</option><option value="30">30 seconds</option><option value="60">60 seconds</option><option value="custom">Custom…</option></select></label></div><div class="form-grid"><label class="field" id="white-custom-field" hidden>White seconds<input id="setup-white-custom" type="number" min="0.1" max="3600" step="0.1" value="30"></label><label class="field" id="black-custom-field" hidden>Black seconds<input id="setup-black-custom" type="number" min="0.1" max="3600" step="0.1" value="30"></label></div><details class="advanced-limits"><summary>Advanced search limits</summary><div class="form-grid"><label class="field">White max nodes<input id="setup-white-nodes" type="number" min="1" max="100000000" placeholder="Time limit only"></label><label class="field">Black max nodes<input id="setup-black-nodes" type="number" min="1" max="100000000" placeholder="Time limit only"></label><label class="field">White max depth<input id="setup-white-depth" type="number" min="1" max="64" placeholder="Automatic"></label><label class="field">Black max depth<input id="setup-black-depth" type="number" min="1" max="64" placeholder="Automatic"></label></div><p class="small-muted">The AI stops at the first limit reached. Leave these blank to use the selected time budget.</p></details></div><label class="check-field"><input id="setup-learning" type="checkbox" checked> Let AI players learn after this game</label></div>
+      <div class="setup-preview"><canvas id="preview-board" width="240" height="240" aria-label="Starting formation preview"></canvas><span class="eyebrow" id="preview-dimensions">24 × 24 SQUARES</span><strong id="preview-pieces">136 pieces per side</strong><p>One board.<br>Countless possibilities.</p></div></div>
+      <div class="dialog-footer"><span id="setup-mode-label">Human versus AI</span><button class="button primary" type="submit" id="start-game">Start playing →</button></div>
+    </form>
+  </dialog>
+  <dialog id="promotion-dialog" class="promotion-dialog"><h2>A new possibility.</h2><p>Choose your promotion.</p><div id="promotion-options"></div></dialog>
+  <script type="module" src="/static/app.js"></script>
+</body>
+</html>
