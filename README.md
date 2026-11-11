@@ -32,6 +32,8 @@ Use Fit for an overview, Play View for readable pieces, the wheel or pinch to zo
 
 **Piece squares** above the board optionally colors occupied squares. It defaults to **None**; choose red/blue, blue/red, amber/violet, or teal/orange, with White's color listed first. The same colors appear in the overview map and starting-formation preview.
 
+Turn on **Highlight King** beside the piece-square colors to mark both kings in gold. The markers follow the displayed position during live play and replay, and also appear in the minimap and setup preview.
+
 Compact army summaries above the board show remaining pieces by symbol and count. The trays beside the board show what each player has captured, grouped by the actual victim's type; on phones they move beneath the board. The lower strip shows legal moves for the player to move, available capturing moves, move number, material edge, total captures, and board occupancy. All counts follow replay positions. En passant and captured promoted pieces are included correctly. Material uses the fixed conventional values listed below, independently of learned AI weights.
 
 Frontend bookkeeping checks use Node's built-in test runner (development only): `node --test tests/*.test.mjs`.
