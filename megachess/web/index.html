@@ -32,10 +32,12 @@
             <option value="amber-violet">White amber · Black violet</option>
             <option value="teal-orange">White teal · Black orange</option>
           </select>
-          <div class="board-visual-toggles"><label><input type="checkbox" id="highlight-king"> Highlight King</label><label><input type="checkbox" id="animate-moves" checked> Animate moves</label></div>
+          <div class="board-visual-toggles"><label><input type="checkbox" id="piece-type-shades" aria-describedby="piece-type-shades-help" disabled> Shade by piece</label><label><input type="checkbox" id="highlight-king"> Highlight King</label><label><input type="checkbox" id="animate-moves" checked> Animate moves</label></div>
+          <span id="piece-type-shades-help" class="sr-only">Choose team colors in Piece squares, then use a different shade for each piece type within those colors.</span>
           <span id="occupied-square-colors-help" class="sr-only">Color only occupied squares. Each option lists White's color first, then Black's.</span>
           <span class="occupied-color-legend" id="occupied-color-legend" hidden><span><i id="white-square-swatch" aria-hidden="true"></i>White</span><span><i id="black-square-swatch" aria-hidden="true"></i>Black</span></span>
         </div>
+        <div id="piece-shade-legend" class="piece-shade-legend" aria-label="Piece-type color key" hidden></div>
         <details class="board-background" id="board-background-settings">
           <summary><span>Board background</span><span class="chevron" aria-hidden="true">⌄</span></summary>
           <div class="board-background-controls">

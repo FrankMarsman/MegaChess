@@ -32,6 +32,8 @@ Use Fit for an overview, Play View for readable pieces, the wheel or pinch to zo
 
 **Piece squares** above the board optionally colors occupied squares. It defaults to **None**; choose red/blue, blue/red, amber/violet, or teal/orange, with White's color listed first. The same colors appear in the overview map and starting-formation preview.
 
+After choosing team colors in **Piece squares**, enable **Shade by piece** to give pawns, knights, bishops, rooks, queens, and kings distinct shades within each team’s color family. The two-row color key identifies each shade. It works on the board, minimap, and setup preview even at zero board opacity, and follows the actual piece type after promotion. The palette and checkbox are remembered in this browser. With both shade mode and **Highlight King** enabled, kings retain their team shade with a gold outline.
+
 Open **Board background** above the board to adjust **Background tone** from black to white and **Board opacity** from faint to solid. These controls change the squares while keeping piece symbols, team colors, king highlights, and move trails vivid. Settings also apply to the minimap and setup preview, are remembered in this browser, and can be restored with **Reset**.
 
 **Animate moves** is on by default. Pieces slide to their destination with a short hop, an origin marker, and a fading directional arrow, in both live play and adjacent replay steps. Animation adapts to the replay speed; large timeline jumps snap directly to the selected position. Reduced-motion preferences use the directional trail without sliding. Uncheck **Animate moves** to use static move highlights.

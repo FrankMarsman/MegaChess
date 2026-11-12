@@ -2,6 +2,7 @@ import {countArmies, captureTimeline, materialValue} from './board-statistics.mj
 import {ReplayPlayback} from './replay-playback.mjs';
 import {MoveAnimation, detectPieceMovement} from './move-animation.mjs';
 import {boardAppearance, normalizeBoardAppearance} from './board-appearance.mjs';
+import {occupiedSquarePalettes, occupiedSquareColors} from './piece-colors.mjs';
 
 const $ = (id) => document.getElementById(id);
 const API = '/api/v1';
@@ -21,13 +22,8 @@ let appearanceSettings=normalizeBoardAppearance(), boardLook=boardAppearance(app
 const pieceImages = new Map();
 const positionStatisticsCache = new Map();
 let capturesHistory = [], positionStatisticsPending = new Set(), statisticsRetryAt = 0;
-const occupiedSquarePalettes = {
-  none:null,
-  'red-blue':{white:'#ef9195',black:'#91b8ee'},
-  'blue-red':{white:'#91b8ee',black:'#ef9195'},
-  'amber-violet':{white:'#efc269',black:'#b79be1'},
-  'teal-orange':{white:'#7bc9bd',black:'#efa477'}
-};
+const pieceColorsStorageKey='megachess.pieceColors.v1';
+let squareColors=null, shadePieceTypes=false;
 let resizeObserver, renderPending=false, lastBatchRefresh=0, setupPreviewPosition=null;
 
 function occupiedSquarePalette(){return occupiedSquarePalettes[$('occupied-square-colors').value]||null;}
@@ -41,8 +37,8 @@ function updateBoardBackground(persist=true){
   requestRender();if(setupPreviewPosition&&$('new-game-dialog').open)drawPreview(setupPreviewPosition);
 }
 function restoreBoardBackground(){let saved;try{saved=JSON.parse(localStorage.getItem(appearanceStorageKey));}catch{}const settings=normalizeBoardAppearance(saved||{});$('board-background-tone').value=String(settings.tone);$('board-opacity').value=String(settings.opacity);updateBoardBackground(false);}
-function tintOccupiedSquare(context,piece,x,y,size,palette){if(!piece||!palette)return;context.fillStyle=piece>0?palette.white:palette.black;context.globalAlpha=.85;context.fillRect(x,y,size,size);context.globalAlpha=1;}
-function tintKingSquare(context,piece,x,y,size,enabled){if(enabled&&Math.abs(piece)===6){context.fillStyle='#ffd968';context.fillRect(x,y,size,size);}}
+function tintOccupiedSquare(context,piece,x,y,size,palette){if(!piece||!palette)return;context.fillStyle=squareColors?.[piece]||(piece>0?palette.white:palette.black);context.globalAlpha=.85;context.fillRect(x,y,size,size);context.globalAlpha=1;}
+function tintKingSquare(context,piece,x,y,size,enabled){if(enabled&&Math.abs(piece)===6&&!shadePieceTypes){context.fillStyle='#ffd968';context.fillRect(x,y,size,size);}}
 function outlineKingSquare(context,piece,x,y,size,enabled){
   if(!enabled||Math.abs(piece)!==6)return;
   context.save();
@@ -51,7 +47,21 @@ function outlineKingSquare(context,piece,x,y,size,enabled){
   context.strokeStyle='#fff0a8';context.lineWidth=Math.max(1.2,size*.035);outline();
   context.restore();
 }
-function updateOccupiedSquareColors(){const palette=occupiedSquarePalette();$('occupied-color-legend').hidden=!palette;if(palette){$('white-square-swatch').style.background=palette.white;$('black-square-swatch').style.background=palette.black;}requestRender();if(setupPreviewPosition)drawPreview(setupPreviewPosition);announce(palette?$('occupied-square-colors').selectedOptions[0].textContent+' occupied squares.':'Occupied-square coloring off.');}
+function renderPieceShadeLegend(){
+  const legend=$('piece-shade-legend');legend.hidden=!shadePieceTypes;
+  if(!shadePieceTypes){legend.innerHTML='';return;}
+  legend.innerHTML=[1,-1].map(color=>`<div class="piece-shade-row"><span class="shade-team">${colorName(color)}</span>${[1,2,3,4,5,6].map(type=>`<span class="piece-shade-key" title="${colorName(color)} ${pieceNames[type]}" aria-label="${colorName(color)} ${pieceNames[type]}"><span class="piece-shade-swatch" style="background:${squareColors[color*type]}"><img src="${pieceImages.get(color*type)?.src||''}" alt="" aria-hidden="true"></span><span>${pieceNames[type]}</span></span>`).join('')}</div>`).join('');
+}
+function updateOccupiedSquareColors(persist=true,announceChange=true){
+  const palette=occupiedSquarePalette(),shadeToggle=$('piece-type-shades');shadeToggle.disabled=!palette;shadeToggle.closest('label').classList.toggle('is-disabled',!palette);shadeToggle.title=palette?'Use distinct shades within each team color.':'Choose team colors in Piece squares first.';
+  shadePieceTypes=!!palette&&shadeToggle.checked;squareColors=occupiedSquareColors(palette,shadePieceTypes);
+  $('occupied-color-legend').hidden=!palette;if(palette){$('white-square-swatch').style.background=palette.white;$('black-square-swatch').style.background=palette.black;}
+  renderPieceShadeLegend();
+  if(persist){try{localStorage.setItem(pieceColorsStorageKey,JSON.stringify({palette:$('occupied-square-colors').value,shaded:shadeToggle.checked}));}catch{}}
+  requestRender();if(setupPreviewPosition&&$('new-game-dialog').open)drawPreview(setupPreviewPosition);
+  if(announceChange)announce(palette?$('occupied-square-colors').selectedOptions[0].textContent+` occupied squares. ${shadePieceTypes?'Shades identify each piece type.':'One color per team.'}`:'Occupied-square coloring off.');
+}
+function restorePieceColors(){let saved;try{saved=JSON.parse(localStorage.getItem(pieceColorsStorageKey));}catch{}const palette=saved?.palette;$('occupied-square-colors').value=Object.hasOwn(occupiedSquarePalettes,palette)?palette:'none';$('piece-type-shades').checked=saved?.shaded===true;updateOccupiedSquareColors(false,false);}
 
 function esc(value){return String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function number(value, fallback=0){const v=Number(value);return Number.isFinite(v)?v:fallback;}
@@ -286,7 +296,8 @@ async function refreshHistory(more=false){const offset=more?state.history.length
 function renderHistory(){const list=$('history-list');list.innerHTML=state.history.length?state.history.map(game=>{const size=game.position?.size||(game.config?.n||1)*8,ply=game.position?.ply??game.ply??game.move_count??0;let date='';try{date=new Date(game.updated_at||game.created_at).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});}catch{}return `<button class="history-item" data-game="${esc(game.id)}"><span class="history-status">${esc(String(game.status||'playing').replaceAll('_',' '))}</span><strong>${size} × ${size} · ${game.config?.setup==='rows'?'Repeated rows':'Block expansion'}</strong><small>${Math.ceil(ply/2)} moves · ${esc(date)}${game.batch_id?' · batch game':''}</small></button>`;}).join(''):'<div class="empty-state"><span>♔</span>Your saved games will live here.</div>';}
 
 const pointers=new Map();let gesture=null,pinchDistance=0,pinchActive=false;
-$('occupied-square-colors').addEventListener('change',updateOccupiedSquareColors);
+$('occupied-square-colors').addEventListener('change',()=>updateOccupiedSquareColors());
+$('piece-type-shades').addEventListener('change',()=>updateOccupiedSquareColors());
 for(const id of ['board-background-tone','board-opacity'])$(id).addEventListener('input',()=>updateBoardBackground());
 $('reset-board-background').addEventListener('click',()=>{$('board-background-tone').value='0';$('board-opacity').value='100';updateBoardBackground();announce('Board background reset.');});
 $('animate-moves').addEventListener('change',()=>{moveAnimation.clear();requestRender();announce($('animate-moves').checked?'Move animations on.':'Move animations off.');});
@@ -323,5 +334,5 @@ $('batch-form').addEventListener('submit',event=>{event.preventDefault();safely(
 $('refresh-history').addEventListener('click',()=>safely(refreshHistory));$('history-list').addEventListener('click',event=>{const button=event.target.closest('[data-game]');if(button)safely(()=>loadGame(button.dataset.game));});$('backup-data').addEventListener('click',()=>safely(async()=>{const result=await api('/backup','POST',{});$('backup-feedback').textContent='Backup saved: '+(result.path||result.filename||'complete');}));
 $('load-more-history').addEventListener('click',()=>safely(()=>refreshHistory(true)));
 
-async function init(){restoreBoardBackground();createPieceImages();resizeObserver=new ResizeObserver(resize);resizeObserver.observe($('board-viewport'));updateRangeOptions();const result=await api('/bootstrap');populateBoardSizes(result.capabilities.sizes);state.profiles=result.profiles||[];state.history=result.games||[];state.batches=result.batches||[];populateProfiles();renderHistory();renderBatches();await updatePreview();const existing=state.history.find(g=>g.status==='playing'&&!g.batch_id)||state.history.find(g=>!g.batch_id);if(existing)await loadGame(existing.id);else await createGame();$('connection-status').textContent='Saved on your machine';setInterval(()=>pollGame(),500);setInterval(renderSearchClock,200);setInterval(()=>{if(!$('tab-training').hidden&&Date.now()-lastBatchRefresh>4000)safely(refreshBatches);},1500);}
+async function init(){restoreBoardBackground();createPieceImages();restorePieceColors();resizeObserver=new ResizeObserver(resize);resizeObserver.observe($('board-viewport'));updateRangeOptions();const result=await api('/bootstrap');populateBoardSizes(result.capabilities.sizes);state.profiles=result.profiles||[];state.history=result.games||[];state.batches=result.batches||[];populateProfiles();renderHistory();renderBatches();await updatePreview();const existing=state.history.find(g=>g.status==='playing'&&!g.batch_id)||state.history.find(g=>!g.batch_id);if(existing)await loadGame(existing.id);else await createGame();$('connection-status').textContent='Saved on your machine';setInterval(()=>pollGame(),500);setInterval(renderSearchClock,200);setInterval(()=>{if(!$('tab-training').hidden&&Date.now()-lastBatchRefresh>4000)safely(refreshBatches);},1500);}
 safely(init);
