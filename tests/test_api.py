@@ -25,7 +25,7 @@ def test_bootstrap_preview_and_invalid_configuration(client):
     bootstrap = client.get("/api/v1/bootstrap").json()
     assert len(bootstrap["profiles"]) == 4
     assert {30, 60} <= set(bootstrap["capabilities"]["seconds"])
-    assert bootstrap["capabilities"]["sizes"] == [1, 3, 5, 7, 9, 11, 13]
+    assert bootstrap["capabilities"]["sizes"] == list(range(1, 66, 2))
     default = client.post("/api/v1/preview", json={}).json()
     assert default["counts"] == {"white": 136, "black": 136}
     assert default["position"]["size"] == 24
@@ -51,6 +51,30 @@ def test_human_move_autosave_stale_rejection_and_incremental_updates(client):
     assert fresh["moves"] == []
     records = client.get(f"/api/v1/games/{game['id']}").json()["moves"]
     assert records[0]["features"]
+
+
+def test_maximum_board_preview_play_and_reload(client):
+    config = {"n": 65, "setup": "rows", "slider_limit": 520}
+    preview = client.post("/api/v1/preview", json={"config": config})
+    assert preview.status_code == 200
+    assert preview.json()["counts"] == {"white": 976, "black": 976}
+    game = create_game(client, config=config, players={
+        "white": {"kind": "human"}, "black": {"kind": "human"}})
+    assert game["position"]["size"] == 520
+    assert len(game["position"]["board"]) == 270400
+    source = 518 * 520
+    move = {"from": source, "to": source - 1040}
+    legal = client.get(f"/api/v1/games/{game['id']}/legal", params={"from_square": source})
+    assert move in legal.json()["moves"]
+    played = client.post(f"/api/v1/games/{game['id']}/move", json={"move": move, "revision": 0})
+    assert played.status_code == 200
+    saved = client.get(f"/api/v1/games/{game['id']}").json()
+    assert saved["game"]["config"]["n"] == 65
+    assert saved["game"]["position"]["ply"] == 1
+    assert saved["game"]["position"]["board"][move["to"]] == 1
+    assert saved["moves"][0]["move"] == move
+    assert saved["moves"][0]["position"] == saved["game"]["position"]
+    assert client.post("/api/v1/preview", json={"config": {"n": 67}}).status_code == 400
 
 
 def test_thirty_and_sixty_second_player_limits_are_saved(client):

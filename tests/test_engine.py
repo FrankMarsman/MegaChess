@@ -2,8 +2,8 @@ import random
 
 import pytest
 
-from megachess.engine import (Position, _make, _unmake, apply_move, extract_features,
-                              game_status, in_check, iter_legal_moves, new_position, position_key)
+from megachess.engine import (MAX_N, SUPPORTED_N, Position, _make, _unmake, apply_move, extract_features,
+                              game_status, in_check, iter_legal_moves, new_position, position_key, validate_config)
 
 
 def fixture(pieces, turn=1, rights=(), ep_target=None, ep_pawn=None, **config):
@@ -14,7 +14,7 @@ def fixture(pieces, turn=1, rights=(), ep_target=None, ep_pawn=None, **config):
     return Position(config, board, turn, set(rights), ep_target, ep_pawn)
 
 
-@pytest.mark.parametrize("n", [1, 3, 5, 7, 9, 11, 13])
+@pytest.mark.parametrize("n", [1, 3, 5, 7, 9, 11, 13, 65])
 @pytest.mark.parametrize("setup", ["blocks", "rows"])
 @pytest.mark.parametrize("placement", ["original", "center"])
 def test_setup_counts_mirroring_and_king_anchors(n, setup, placement):
@@ -32,10 +32,49 @@ def test_setup_counts_mirroring_and_king_anchors(n, setup, placement):
     assert sum(abs(piece) == 6 for piece in pos.board) == 2
 
 
-@pytest.mark.parametrize("bad", [0, 2, 4, -1, 15, 3.0, True])
+@pytest.mark.parametrize("bad", [0, 2, 4, -1, 64, 66, 67, 65.0, "65", True, False])
 def test_reject_bad_size(bad):
     with pytest.raises(ValueError):
         new_position({"n": bad})
+
+
+def test_all_supported_multipliers_and_upper_bound():
+    assert MAX_N == 65
+    assert SUPPORTED_N == tuple(range(1, 66, 2))
+    for n in SUPPORTED_N:
+        assert validate_config({"n": n})["n"] == n
+
+
+def test_maximum_board_move_and_saved_position_round_trip():
+    pos = new_position({"n": MAX_N, "setup": "rows"})
+    assert pos.size == 520
+    source = (pos.size - 2) * pos.size
+    move = {"from": source, "to": source - 2 * pos.size}
+    assert move in list(iter_legal_moves(pos, source))
+    moved = apply_move(pos, move)
+    assert moved.board[source] == 0
+    assert moved.board[move["to"]] == 1
+    assert moved.ply == 1 and moved.turn == -1
+    restored = Position.from_dict(moved.to_dict())
+    assert restored.to_dict() == moved.to_dict()
+    assert restored.hash == moved.hash == moved._calculate_hash()
+
+
+@pytest.mark.parametrize("config,expected", [
+    ({"n": 1}, "ac6c7996deff6220"),
+    ({"n": 3, "setup": "rows"}, "e70e8e0f47590326"),
+    ({"n": 13, "king_placement": "center"}, "b42e1b3fef19f35a"),
+])
+def test_compact_token_storage_preserves_saved_position_keys(config, expected):
+    # Recorded before compacting tokens: history/draw detection must not change.
+    assert position_key(new_position(config)) == expected
+
+
+def test_compact_tokens_preserve_turn_and_en_passant_history_keys():
+    pos = fixture({60: 6, 4: -6, 28: 1, 11: -1}, turn=-1, rights=[11])
+    assert position_key(pos) == "a75f0b31186d00ff"
+    pos = apply_move(pos, {"from": 11, "to": 27})
+    assert position_key(pos) == "f6b2db77c0cfb91e"
 
 
 def perft(position, depth):

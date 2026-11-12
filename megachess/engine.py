@@ -1,10 +1,11 @@
 """Pure, size-independent Mega Chess rules. Coordinates start at Black's home edge.
 
 The public API returns new positions; search uses reversible internal moves so it
-never copies a ten-thousand-square board at each node.
+never copies the entire board at each node.
 """
 from __future__ import annotations
 
+from array import array
 from dataclasses import dataclass, field
 from functools import lru_cache
 import math
@@ -12,6 +13,8 @@ import random
 from typing import Callable, Iterator
 
 PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING = range(1, 7)
+MAX_N = 65
+SUPPORTED_N = tuple(range(1, MAX_N + 1, 2))
 FEATURE_NAMES = ("pawn", "knight", "bishop", "rook", "queen", "advancement", "activity", "approach", "safety")
 MATERIAL_NAMES = {1: "pawn", 2: "knight", 3: "bishop", 4: "rook", 5: "queen"}
 ORTHOGONAL = ((-1, 0), (1, 0), (0, -1), (0, 1))
@@ -31,8 +34,8 @@ def _repetition_token(key: int, count: int) -> int:
 
 def validate_config(config: dict) -> dict:
     n = config.get("n", 3)
-    if isinstance(n, bool) or not isinstance(n, int) or n not in (1, 3, 5, 7, 9, 11, 13):
-        raise ValueError("N must be 1 or an odd number from 3 to 13")
+    if isinstance(n, bool) or not isinstance(n, int) or n not in SUPPORTED_N:
+        raise ValueError(f"N must be 1 or an odd number from 3 to {MAX_N}")
     setup = config.get("setup", "blocks")
     placement = config.get("king_placement", "original")
     limit = config.get("slider_limit")
@@ -51,9 +54,11 @@ def validate_config(config: dict) -> dict:
 @lru_cache(maxsize=7)
 def _tokens(size: int):
     rng = random.Random(0x4D4547414348455353 + size)
-    return ([rng.getrandbits(64) for _ in range(size * size * 13)],
-            [rng.getrandbits(64) for _ in range(size * size)],
-            [rng.getrandbits(64) for _ in range(size * size)], rng.getrandbits(64))
+    # Preserve the token sequence used by saved games without a Python integer
+    # object per entry; the largest board has more than four million tokens.
+    return (array("Q", (rng.getrandbits(64) for _ in range(size * size * 13))),
+            array("Q", (rng.getrandbits(64) for _ in range(size * size))),
+            array("Q", (rng.getrandbits(64) for _ in range(size * size))), rng.getrandbits(64))
 
 
 @dataclass

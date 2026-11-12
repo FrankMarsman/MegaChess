@@ -44,7 +44,7 @@ Use the **Game timeline** slider below the board to inspect any recorded step, i
 
 ### Rules
 
-- Odd N from 3 through 13 produces an **8N × 8N** board; N=1 is a reference mode with castling disabled.
+- Odd N from 3 through 65 produces an **8N × 8N** board (up to **520 × 520 squares**); N=1 is a reference mode with castling disabled.
 - **Block expansion:** every original square becomes N×N squares; one king remains at the middle of its king block or on the right central file. Each side has **15N² + 1** pieces.
 - **Repeated rows:** the ordinary two ranks repeat across the board, retaining the middle copy's king. Each side has **15N + 1** pieces.
 - Empty discarded king slots remain empty. Black mirrors White vertically.
@@ -87,7 +87,7 @@ Interactive searches have their own capacity and take priority over new batch se
 
 ## Saved data and exports
 
-SQLite stores games, full replay snapshots, moves, seeds, immutable profiles, batches, outcomes, feature vectors, and search summaries. The full search tree is not stored. Full snapshots favor exact replay but can consume significant storage in long N=13 runs.
+SQLite stores games, full replay snapshots, moves, seeds, immutable profiles, batches, outcomes, feature vectors, and search summaries. The full search tree is not stored. Full snapshots favor exact replay but can consume significant storage in long games on large boards.
 
 - **Saved Games:** reopen and replay a match.
 - **Game JSON:** complete replay and configuration.

@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import __version__
-from .engine import Position, extract_features, iter_legal_moves, new_position
+from .engine import SUPPORTED_N, Position, extract_features, iter_legal_moves, new_position
 from .runtime import Runtime
 from .statistics import StatisticsCache
 
@@ -59,7 +59,7 @@ def create_app(data_dir=None, start_workers=True):
     def bootstrap(request: Request):
         store = runtime(request).storage
         return {"profiles": store.list_profiles(), "games": store.list_games(), "batches": store.list_batches(),
-                "capabilities": {"version": __version__, "sizes": [1, 3, 5, 7, 9, 11, 13],
+                "capabilities": {"version": __version__, "sizes": list(SUPPORTED_N),
                                  "seconds": [2, 5, 10, 30, 60], "data_dir": str(runtime(request).data_dir)}}
 
     @app.post("/api/v1/preview")
