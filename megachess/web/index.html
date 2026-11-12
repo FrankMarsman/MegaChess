@@ -36,6 +36,14 @@
           <span id="occupied-square-colors-help" class="sr-only">Color only occupied squares. Each option lists White's color first, then Black's.</span>
           <span class="occupied-color-legend" id="occupied-color-legend" hidden><span><i id="white-square-swatch" aria-hidden="true"></i>White</span><span><i id="black-square-swatch" aria-hidden="true"></i>Black</span></span>
         </div>
+        <details class="board-background" id="board-background-settings">
+          <summary><span>Board background</span><span class="chevron" aria-hidden="true">⌄</span></summary>
+          <div class="board-background-controls">
+            <div class="background-slider"><div><label for="board-background-tone">Background tone</label><output id="board-background-tone-value" for="board-background-tone">Original</output></div><div class="background-scale"><span>Black</span><input id="board-background-tone" type="range" min="-100" max="100" step="1" value="0" aria-valuetext="Original"><span>White</span></div></div>
+            <div class="background-slider"><div><label for="board-opacity">Board opacity</label><output id="board-opacity-value" for="board-opacity">100%</output></div><div class="background-scale"><span>Faint</span><input id="board-opacity" type="range" min="0" max="100" step="1" value="100" aria-valuetext="100 percent"><span>Solid</span></div></div>
+            <div class="background-help"><span>Fade the squares to bring team colors forward. Pieces and highlights stay vivid.</span><button id="reset-board-background" class="small-link" type="button">Reset</button></div>
+          </div>
+        </details>
         <div class="board-stage">
           <aside id="captures-left" class="capture-tray" aria-label="Pieces captured by White"></aside>
           <div id="board-viewport" class="board-viewport">
