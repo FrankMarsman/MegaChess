@@ -40,6 +40,13 @@ def create_app(data_dir=None, start_workers=True):
     web = Path(__file__).parent / "web"
     statistics_cache = StatisticsCache()
 
+    @app.middleware("http")
+    async def fresh_local_state(request, call_next):
+        response = await call_next(request)
+        # Live snapshots and local code must not remain stale across restarts.
+        response.headers["Cache-Control"] = "no-store" if request.url.path.startswith("/api/") else "no-cache"
+        return response
+
     def runtime(request):
         return request.app.state.runtime
 

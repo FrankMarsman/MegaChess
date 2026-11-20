@@ -132,3 +132,9 @@ def test_new_game_preserves_previous_match_and_resume_control(client):
     resumed = client.post(f"/api/v1/games/{first['id']}/control", json={"action": "resume"}).json()["game"]
     assert not resumed["paused"]
     assert client.get("/api/v1/games/missing").status_code == 404
+
+
+def test_live_state_and_frontend_are_not_served_from_stale_cache(client):
+    assert client.get("/api/v1/bootstrap").headers["cache-control"] == "no-store"
+    assert client.get("/").headers["cache-control"] == "no-cache"
+    assert client.get("/static/app.js").headers["cache-control"] == "no-cache"

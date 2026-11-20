@@ -1,3 +1,4 @@
+import {LiveUpdates} from './live-updates.mjs';
 import {countArmies, captureTimeline, materialValue} from './board-statistics.mjs';
 import {ReplayPlayback} from './replay-playback.mjs';
 import {MoveAnimation, detectPieceMovement} from './move-animation.mjs';
@@ -16,7 +17,7 @@ const state = {game:null,profiles:[],moves:[],search:null,searchReceived:0,previ
 const replayPlayback = new ReplayPlayback({getLength:()=>state.moves.length,getIndex:()=>state.replay,showFrame:index=>setReplay(index,true),onChange:()=>renderTimeline()});
 const moveAnimation = new MoveAnimation();
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-let displayedPosition=null, displayedGame=null;
+let displayedPosition=null, displayedGame=null, controlPending=false;
 const appearanceStorageKey='megachess.boardAppearance.v1';
 let appearanceSettings=normalizeBoardAppearance(), boardLook=boardAppearance(appearanceSettings);
 const pieceImages = new Map();
@@ -69,8 +70,8 @@ function count(value){return new Intl.NumberFormat('en',{maximumFractionDigits:0
 function announce(message){$('announcer').textContent=message;}
 function error(message){$('error-text').textContent=message;$('error-banner').hidden=false;}
 function clearError(){$('error-banner').hidden=true;}
-async function api(path,method='GET',data){
-  const options={method,headers:{'Accept':'application/json'}};
+async function api(path,method='GET',data,signal){
+  const options={method,cache:'no-store',signal,headers:{'Accept':'application/json'}};
   if(data!==undefined){options.headers['Content-Type']='application/json';options.body=JSON.stringify(data);}
   const response=await fetch(API+path,options);
   if(!response.ok){let detail;try{const body=await response.json();detail=body.detail||body.error||body.message;}catch{}throw new Error(typeof detail==='string'?detail:response.status===409?'The position changed. Please try again.':`Request failed (${response.status}).`);}
@@ -203,7 +204,8 @@ function renderGame(){const game=state.game;if(!game)return;if(game.search_error
   let turnText=state.replay!==null?'Replaying position '+state.replay:gameFinished()?game.status==='checkmate'?`${colorName(game.winner)} wins · checkmate`:game.status==='resigned'?`${colorName(game.winner)} wins`:`${game.status==='draw'?'Draw':game.status==='cutoff'?'Ply limit reached':'Game ended'}`:`${colorName(game.position.turn)} to move${game.check?' · check':''}${game.paused?' · paused':''}`;
   $('turn-text').textContent=turnText;$('turn-pill').classList.toggle('black',pos.turn===-1);$('turn-pill').classList.toggle('finished',gameFinished());renderPlayer(-1);renderPlayer(1);
   $('mode-note').textContent=game.search_error?`Search paused: ${game.search_error}`:gameFinished()?game.reason?String(game.reason).replaceAll('_',' '):'This game is saved in your library.':mode.startsWith('Two players')?'Take turns at the same keyboard. The board stays facing the same way until you flip it.':mode==='AI versus AI'?'Two minds, one very big board. Pause, step, or open the search room to follow their thinking.':'Select one of your pieces, then choose a highlighted square. Your AI opponent will take the next turn.';
-  const hasAI=game.players.white.kind==='ai'||game.players.black.kind==='ai';$('pause-game').disabled=!hasAI||gameFinished();$('pause-game').textContent=game.paused?'▶ Resume':'Ⅱ Pause';$('step-game').disabled=!hasAI||gameFinished()||!game.paused;$('move-now').disabled=gameFinished()||playerFor(game.position.turn)?.kind!=='ai'||game.paused;$('resign-game').disabled=gameFinished()||playerFor(game.position.turn)?.kind!=='human';$('draw-game').disabled=gameFinished();$('export-game').href=`${API}/games/${game.id}/export`;$('move-count').textContent=`${Math.ceil(state.moves.length/2)} move${state.moves.length>2||state.moves.length===0?'s':''}`;
+  const hasAI=game.players.white.kind==='ai'||game.players.black.kind==='ai';$('auto-play').checked=hasAI&&!game.paused&&!gameFinished();$('auto-play').disabled=controlPending||!hasAI||gameFinished();$('pause-game').disabled=controlPending||!hasAI||gameFinished();$('pause-game').textContent=game.paused?'▶ Resume AI':'Ⅱ Pause AI';$('step-game').disabled=controlPending||!hasAI||gameFinished()||!game.paused||!!state.search?.thinking;$('move-now').disabled=controlPending||gameFinished()||playerFor(game.position.turn)?.kind!=='ai'||game.paused;$('resign-game').disabled=gameFinished()||playerFor(game.position.turn)?.kind!=='human';$('draw-game').disabled=gameFinished();$('export-game').href=`${API}/games/${game.id}/export`;$('move-count').textContent=`${Math.ceil(state.moves.length/2)} move${state.moves.length>2||state.moves.length===0?'s':''}`;
+  $('ai-play-status').textContent=controlPending?'Applying control…':!hasAI?'Choose AI players in New setup.':gameFinished()?'Game finished.':game.paused?(state.search?.thinking?'Playing one AI turn…':'AI play paused. Resume or play one turn.'):state.replay!==null?'AI play is running. Viewing history — choose Live to follow.':isSearching()?`${colorName(game.position.turn)} is thinking · ${number(state.search?.remaining).toFixed(1)}s remaining`:'Auto-play running · waiting for the next AI turn.';
   renderMoves();renderBoardStatistics();renderSearch();if($('evaluation-panel').open&&state.evaluationRevision!==`${game.id}:${game.revision}`)safely(refreshEvaluation);
 }
 
@@ -243,7 +245,7 @@ async function refreshPositionStatistics(){
 function renderMoves(){const list=$('move-list');if(!state.moves.length){list.innerHTML='<div class="empty-state"><span>↗</span>Your first move starts the story.</div>';}else{const rows=[];for(let i=0;i<state.moves.length;i+=2){const make=(m,j)=>m?`<button class="move-entry ${state.replay===j+1?'selected':''}" data-replay="${j+1}">${esc(moveText(m.move,state.game.position.size))}</button>`:'<span></span>';rows.push(`<div class="move-row"><span class="move-number">${Math.floor(i/2)+1}.</span>${make(state.moves[i],i)}${make(state.moves[i+1],i+1)}</div>`);}const oldScroll=list.scrollTop,atEnd=list.scrollHeight-oldScroll-list.clientHeight<35;list.innerHTML=rows.join('');if(atEnd&&state.replay===null)list.scrollTop=list.scrollHeight;else list.scrollTop=oldScroll;}
   $('replay-label').textContent=state.replay===null?'Live game':`Position ${state.replay} / ${state.moves.length}`;$('replay-start').disabled=!state.moves.length;$('replay-prev').disabled=state.replay===0||!state.moves.length;$('replay-next').disabled=state.replay===null||state.replay>=state.moves.length;$('replay-live').disabled=state.replay===null;renderTimeline();
 }
-function renderTimeline(){const total=state.moves.length,frame=state.replay===null?total:state.replay,slider=$('game-timeline-slider');slider.max=String(total);slider.value=String(frame);slider.disabled=!total;const positionText=state.replay===null?`Live · ${count(total)} step${total===1?'':'s'}`:frame===0?`Start · 0 / ${count(total)}`:`Step ${count(frame)} / ${count(total)} · ${moveText(state.moves[frame-1]?.move)}`;$('timeline-position').textContent=positionText;slider.setAttribute('aria-valuetext',positionText);$('timeline-play').disabled=!total;$('timeline-play').textContent=replayPlayback.playing?'■ Stop':'▶ Play';$('timeline-play').setAttribute('aria-label',replayPlayback.playing?'Stop replay':'Play replay');$('timeline-play').setAttribute('aria-pressed',String(replayPlayback.playing));$('timeline-live').disabled=state.replay===null;$('timeline-note').textContent=!total?'No steps recorded yet.':replayPlayback.playing?(gameFinished()?`Looping · ${replayPlayback.interval/1000}s / move · completed game`:`Looping · ${replayPlayback.interval/1000}s / move · live game continues`):state.replay===null?'Slide to review earlier steps.':(gameFinished()?'Viewing history · completed game':'Viewing history · live game continues');}
+function renderTimeline(){const total=state.moves.length,frame=state.replay===null?total:state.replay,slider=$('game-timeline-slider');slider.max=String(total);slider.value=String(frame);slider.disabled=!total;const positionText=state.replay===null?`Live · ${count(total)} step${total===1?'':'s'}`:frame===0?`Start · 0 / ${count(total)}`:`Step ${count(frame)} / ${count(total)} · ${moveText(state.moves[frame-1]?.move)}`;$('timeline-position').textContent=positionText;slider.setAttribute('aria-valuetext',positionText);$('timeline-play').disabled=!total;$('timeline-play').textContent=replayPlayback.playing?'■ Stop replay':'▶ Replay';$('timeline-play').setAttribute('aria-label',replayPlayback.playing?'Stop replay':'Play replay');$('timeline-play').setAttribute('aria-pressed',String(replayPlayback.playing));$('timeline-live').disabled=state.replay===null;$('timeline-note').textContent=!total?'No steps recorded yet.':replayPlayback.playing?(gameFinished()?`Looping · ${replayPlayback.interval/1000}s / move · completed game`:`Looping · ${replayPlayback.interval/1000}s / move · live game continues`):state.replay===null?'Slide to review earlier steps.':(gameFinished()?'Viewing history · completed game':'Viewing history · live game continues');}
 function setReplay(index,fromPlayback=false){if(!fromPlayback)replayPlayback.stop();state.selected=null;state.legal=[];state.focus=null;state.legalRequest++;state.replay=index===null?null:Math.min(state.moves.length,Math.max(0,index));$('board-description').textContent=state.replay===null?'Select a piece to see its legal moves.':'Reviewing recorded steps. Choose Live to return to play.';renderGame();requestRender();}
 async function selectSquare(index){
   const pos=currentPosition();if(!pos||index===null)return;state.focus=index;
@@ -270,9 +272,40 @@ function renderSearch(){const search=state.search,thinking=isSearching();$('sear
   const rootTotal=search.root_total??search.candidates,stats=[['Positions',count(search.nodes)],['Evaluations',count(search.evaluated)],['Moves generated',count(search.generated)],['Depth completed',`${number(search.completed_depth)}${search.depth>search.completed_depth?' / '+search.depth+(thinking?' now':' partial'):''}`],['Branches cut',count(search.cutoffs)],['Cache hits',count(search.tt_hits)],['Root moves',`${count(search.root_done)}${rootTotal!==undefined?' / '+count(rootTotal):''}`],['Quiescence nodes',count(search.qnodes)],['Positions / sec',count(number(search.nodes)/Math.max(.001,number(search.elapsed)))],['Eval · AI view',Number.isFinite(search.score)?`${search.score>=0?'+':''}${Number(search.score).toFixed(2)}`:'—']];$('search-stats').innerHTML=stats.map(([label,value])=>`<div><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('');$('search-pv').textContent=(search.pv?.length?search.pv:search.move?[search.move]:[]).slice(0,8).map(m=>moveText(m)).join('  ·  ')||'Finding a legal starting move…';
   const log=$('search-log'),atEnd=log.scrollHeight-log.scrollTop-log.clientHeight<30;log.innerHTML=state.events.map(e=>`<div><time>${esc(typeof e.time==='number'?e.time.toFixed(1)+'s':e.time)}</time>${esc(e.message)}</div>`).join('')||'<div class="log-empty">Search in progress…</div>';if(atEnd)log.scrollTop=log.scrollHeight;renderSearchClock();
 }
-async function pollGame(force=false){if(!state.game||state.polling&&!force)return;state.polling=true;const id=state.game.id;try{const result=await api(`/games/${id}/updates?revision=${state.lastRevision??0}`);if(state.game?.id!==id)return;const oldRevision=state.game.revision,oldPly=state.game.position.ply;if(result.game&&result.game.revision>=state.game.revision)state.game=result.game;state.lastRevision=Math.max(state.lastRevision,result.game?.revision??0);mergeMoves(result.moves||[]);if(result.search)receiveSearch(result.search);if(state.game.revision!==oldRevision||state.game.position.ply!==oldPly){state.selected=null;state.legal=[];state.legalRequest++;$('board-description').textContent=state.replay===null?'Select a piece to see its legal moves.':'Reviewing recorded steps. Choose Live to return to play.';if($('follow-moves').checked&&!camera.fitted&&state.replay===null){const last=state.moves.at(-1)?.move;if(last){const p=boardPoint(last.to),visible=p.x>=0&&p.y>=0&&p.x+camera.cell<=camera.width&&p.y+camera.cell<=camera.height;if(!visible)focusSquare(last.to,Math.max(camera.cell,24));}}renderGame();requestRender();}else{renderGame();} $('connection-status').textContent='Saved on your machine';}
-  catch(e){$('connection-status').textContent='Reconnecting to your studio…';if(force)throw e;}finally{state.polling=false;}}
-async function controlGame(action,extra={}){if(!state.game)return;const result=await api(`/games/${state.game.id}/control`,'POST',{action,...extra});if(result.game)state.game=result.game;renderGame();await pollGame(true);}
+const liveUpdates = new LiveUpdates({
+  getGame:()=>state.game&&({id:state.game.id,revision:state.lastRevision??0}),
+  fetchUpdates:(game,signal)=>api(`/games/${game.id}/updates?revision=${game.revision}`,'GET',undefined,signal),
+  apply:result=>{
+    const previousRevision=state.game.revision;
+    if(result.game&&result.game.revision>=state.game.revision)state.game=result.game;
+    state.lastRevision=Math.max(state.lastRevision,result.game?.revision??0);
+    mergeMoves(result.moves||[]);
+    if(result.search)receiveSearch(result.search);
+    if(state.game.revision!==previousRevision){state.selected=null;state.legal=[];state.legalRequest++;}
+    if($('follow-moves').checked&&!camera.fitted&&state.replay===null){
+      const last=state.moves.at(-1)?.move;
+      if(last){const p=boardPoint(last.to),visible=p.x>=0&&p.y>=0&&p.x+camera.cell<=camera.width&&p.y+camera.cell<=camera.height;if(!visible)focusSquare(last.to,Math.max(camera.cell,24));}
+    }
+    renderGame();requestRender();
+    $('connection-status').textContent='Saved on your machine';
+  },
+  onError:()=>{$('connection-status').textContent='Reconnecting to your studio…';}
+});
+function pollGame(force=false){return liveUpdates.refresh(force);}
+async function controlGame(action,extra={}){
+  if(!state.game||controlPending)return;
+  const id=state.game.id;controlPending=true;renderGame();
+  // Pausing also stops replay; resuming returns the viewer to the live board.
+  if(action==='pause')replayPlayback.stop();
+  if(action==='resume')setReplay(null);
+  try{
+    const result=await api(`/games/${id}/control`,'POST',{action,...extra},AbortSignal.timeout(15000));
+    if(state.game?.id!==id)return;
+    if(result.game&&result.game.revision>=state.game.revision)state.game=result.game;
+    renderGame();requestRender();await pollGame(true);
+    announce(action==='pause'?'AI play paused.':action==='resume'?'AI play resumed.': 'Game control applied.');
+  }finally{controlPending=false;renderGame();requestRender();}
+}
 async function refreshEvaluation(){if(!state.game||!$('evaluation-panel').open)return;const id=state.game.id,revision=state.game.revision;state.evaluationRevision=`${id}:${revision}`;const result=await api(`/games/${id}/evaluation`);if(state.game?.id!==id)return;const sides=result.contributions||{},white=sides.white||{},black=sides.black||{},signed=v=>`${number(v)>=0?'+':''}${number(v).toFixed(3)}`;const aiSide=Object.keys(sides)[0];if(!aiSide){$('evaluation-values').innerHTML='<p class="small-muted">Choose an AI player to see its weighted evaluation.</p>';return;}const both=!!sides.white&&!!sides.black;$('evaluation-values').innerHTML=`<div class="evaluation-row header"><span>Feature</span><span>${both?'White AI':aiSide==='white'?'White AI':'Feature'}</span><span>${both?'Black AI':'AI value'}</span></div>`+Object.keys(featureNames).map(key=>`<div class="evaluation-row"><span>${featureNames[key]}</span><span>${signed(both?white[key]:result.features?.[key])}</span><span>${signed(both?black[key]:(sides[aiSide]||{})[key])}</span></div>`).join('')+`<div class="evaluation-row total"><span>Weighted total</span><span>${both?signed(Object.values(white).reduce((a,b)=>a+number(b),0)):''}</span><span>${signed(Object.values(both?black:sides[aiSide]).reduce((a,b)=>a+number(b),0))}</span></div>`;}
 function activateTab(name){for(const button of document.querySelectorAll('.tab')){const active=button.dataset.tab===name;button.classList.toggle('active',active);button.setAttribute('aria-selected',String(active));}for(const panel of document.querySelectorAll('.tab-panel'))panel.hidden=panel.id!==`tab-${name}`;if(name==='history')safely(refreshHistory);if(name==='training')safely(refreshBatches);}
 
@@ -320,6 +353,7 @@ for(const id of ['setup-king','setup-range','setup-draw'])$(id).addEventListener
 for(const radio of document.querySelectorAll('input[name="setup"]'))radio.addEventListener('change',()=>safely(updatePreview));
 for(const id of ['setup-white','setup-black','setup-white-time','setup-black-time'])$(id).addEventListener('change',updateSetupMode);
 $('zoom-in').addEventListener('click',()=>zoomAt(1.4));$('zoom-out').addEventListener('click',()=>zoomAt(1/1.4));$('fit-board').addEventListener('click',fitBoard);$('play-view').addEventListener('click',playView);$('flip-board').addEventListener('click',()=>{const pos=currentPosition();if(!pos)return;camera.flipped=!camera.flipped;renderBoardStatistics();if(camera.fitted)fitBoard();else focusSquare(state.selected??state.focus??kingSquare(pos.turn),camera.cell);requestRender();});$('focus-last').addEventListener('click',()=>focusSquare(state.moves.at(-1)?.move?.to??kingSquare(),Math.max(camera.cell,32)));$('find-king').addEventListener('click',()=>focusSquare(kingSquare(),40));$('guides').addEventListener('change',requestRender);
+$('auto-play').addEventListener('change',()=>safely(()=>controlGame($('auto-play').checked?'resume':'pause')));
 $('dismiss-error').addEventListener('click',clearError);$('pause-game').addEventListener('click',()=>safely(()=>controlGame(state.game?.paused?'resume':'pause')));$('step-game').addEventListener('click',()=>safely(()=>controlGame('step')));$('move-now').addEventListener('click',()=>safely(()=>controlGame('move_now')));$('resign-game').addEventListener('click',()=>safely(()=>controlGame('resign')));$('draw-game').addEventListener('click',()=>safely(()=>controlGame('draw')));$('view-delay').addEventListener('change',()=>safely(()=>controlGame('set_delay',{value:number($('view-delay').value,.5)})));
 $('evaluation-panel').addEventListener('toggle',()=>{if($('evaluation-panel').open)safely(refreshEvaluation);});
 $('move-list').addEventListener('click',event=>{const button=event.target.closest('[data-replay]');if(button)setReplay(number(button.dataset.replay));});$('replay-start').addEventListener('click',()=>setReplay(0));$('replay-prev').addEventListener('click',()=>setReplay((state.replay??state.moves.length)-1));$('replay-next').addEventListener('click',()=>setReplay((state.replay??state.moves.length)+1));$('replay-live').addEventListener('click',()=>setReplay(null));
@@ -334,5 +368,9 @@ $('batch-form').addEventListener('submit',event=>{event.preventDefault();safely(
 $('refresh-history').addEventListener('click',()=>safely(refreshHistory));$('history-list').addEventListener('click',event=>{const button=event.target.closest('[data-game]');if(button)safely(()=>loadGame(button.dataset.game));});$('backup-data').addEventListener('click',()=>safely(async()=>{const result=await api('/backup','POST',{});$('backup-feedback').textContent='Backup saved: '+(result.path||result.filename||'complete');}));
 $('load-more-history').addEventListener('click',()=>safely(()=>refreshHistory(true)));
 
-async function init(){restoreBoardBackground();createPieceImages();restorePieceColors();resizeObserver=new ResizeObserver(resize);resizeObserver.observe($('board-viewport'));updateRangeOptions();const result=await api('/bootstrap');populateBoardSizes(result.capabilities.sizes);state.profiles=result.profiles||[];state.history=result.games||[];state.batches=result.batches||[];populateProfiles();renderHistory();renderBatches();await updatePreview();const existing=state.history.find(g=>g.status==='playing'&&!g.batch_id)||state.history.find(g=>!g.batch_id);if(existing)await loadGame(existing.id);else await createGame();$('connection-status').textContent='Saved on your machine';setInterval(()=>pollGame(),500);setInterval(renderSearchClock,200);setInterval(()=>{if(!$('tab-training').hidden&&Date.now()-lastBatchRefresh>4000)safely(refreshBatches);},1500);}
+async function init(){restoreBoardBackground();createPieceImages();restorePieceColors();resizeObserver=new ResizeObserver(resize);resizeObserver.observe($('board-viewport'));updateRangeOptions();const result=await api('/bootstrap');populateBoardSizes(result.capabilities.sizes);state.profiles=result.profiles||[];state.history=result.games||[];state.batches=result.batches||[];populateProfiles();renderHistory();renderBatches();await updatePreview();const existing=state.history.find(g=>g.status==='playing'&&!g.batch_id)||state.history.find(g=>!g.batch_id);if(existing)await loadGame(existing.id);else await createGame();$('connection-status').textContent='Saved on your machine';setInterval(renderSearchClock,200);setInterval(()=>{if(!$('tab-training').hidden&&Date.now()-lastBatchRefresh>4000)safely(refreshBatches);},1500);}
+liveUpdates.start();
+window.addEventListener('focus',()=>pollGame(true));
+window.addEventListener('online',()=>pollGame(true));
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)pollGame(true);});
 safely(init);

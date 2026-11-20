@@ -177,3 +177,36 @@ def test_actual_checkmate_automatically_learns_once_and_keeps_match_frozen(tmp_p
         assert rt.storage.get_game(game["id"])["players"]["white"]["profile"] == frozen
     finally:
         rt.close()
+
+
+def test_ai_vs_ai_continues_and_pause_resume_and_step_are_durable(runtime):
+    game = runtime.create_game({"config": {"n": 1}, "players": {
+        side: {"kind": "ai", "profile_id": "balanced", "seconds": 0.6}
+        for side in ("white", "black")}, "learning": False, "view_delay": 0.05})
+    gid = game["id"]
+    wait_for(lambda: runtime.storage.get_game(gid)["position"]["ply"] >= 4)
+    paused = runtime.control(gid, "pause")
+    time.sleep(0.8)
+    assert runtime.storage.get_game(gid)["position"] == paused["position"]
+    runtime.control(gid, "step")
+    stepped = wait_for(lambda: (g if (g := runtime.storage.get_game(gid))["position"]["ply"] > paused["position"]["ply"] else None))
+    assert stepped["paused"]
+    time.sleep(0.8)
+    assert runtime.storage.get_game(gid)["position"]["ply"] == stepped["position"]["ply"]
+    resumed = runtime.control(gid, "resume")
+    # Repeated Resume must not invalidate an active search's revision.
+    assert runtime.control(gid, "resume")["revision"] == resumed["revision"]
+    wait_for(lambda: runtime.storage.get_game(gid)["position"]["ply"] >= stepped["position"]["ply"] + 3)
+    runtime.control(gid, "pause")
+
+
+def test_resume_during_single_step_replaces_old_search(runtime):
+    game = ai_game(runtime, seconds=1)
+    gid = game["id"]
+    runtime.control(gid, "pause")
+    runtime.control(gid, "step")
+    old_task = runtime.active[gid]
+    resumed = runtime.control(gid, "resume")
+    assert not resumed["paused"]
+    assert runtime.active.get(gid) is not old_task
+    wait_for(lambda: moved(runtime, gid))

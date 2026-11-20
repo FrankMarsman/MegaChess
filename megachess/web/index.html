@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#173d32">
   <meta name="description" content="A bigger board. A new kind of chess. Play, explore, and train your own Mega Chess AIs.">
   <title>Mega Chess — A bigger game</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/style.css?v=20261120-live">
 </head>
 <body>
   <header class="masthead">
@@ -61,7 +61,7 @@
       <section class="game-timeline" aria-label="Game replay timeline">
         <div class="timeline-heading"><label for="game-timeline-slider">Game timeline</label><span id="timeline-position">Live · 0 steps</span></div>
         <input id="game-timeline-slider" class="timeline-slider" type="range" min="0" max="0" step="1" value="0" aria-valuetext="Starting position" disabled>
-        <div class="timeline-actions"><button id="timeline-play" class="button secondary" type="button" aria-label="Play replay" aria-pressed="false" disabled>▶ Play</button><button id="timeline-live" class="small-link" type="button" aria-label="Return timeline to live game" disabled>Live ↗</button><label class="timeline-speed" for="timeline-speed">Seconds / move <input id="timeline-speed" type="number" min="0.05" max="10" step="0.05" value="0.1"></label><span id="timeline-note">No steps recorded yet.</span></div>
+        <div class="timeline-actions"><button id="timeline-play" class="button secondary" type="button" aria-label="Play replay" aria-pressed="false" disabled>▶ Replay</button><button id="timeline-live" class="small-link" type="button" aria-label="Return timeline to live game" disabled>Live ↗</button><label class="timeline-speed" for="timeline-speed">Seconds / move <input id="timeline-speed" type="number" min="0.05" max="10" step="0.05" value="0.1"></label><span id="timeline-note">No steps recorded yet.</span></div>
       </section>
       <div id="position-stats" class="position-stats" aria-label="Position statistics"></div>
       <div class="under-board"><span id="game-config-label">MEGA CHESS</span><span>Scroll to zoom · Drag to explore · Click to move</span></div>
@@ -82,7 +82,7 @@
 
       <section class="tab-panel" id="tab-play">
         <div class="panel-section"><div class="section-heading"><span class="eyebrow">AT THE TABLE</span><button class="small-link" id="edit-setup">New setup ↗</button></div><div class="player-card" id="black-player"></div><div class="player-separator">VERSUS</div><div class="player-card" id="white-player"></div><p class="mode-note" id="mode-note">Choose who takes each side.</p></div>
-        <div class="panel-section game-controls"><div class="control-row"><button id="pause-game" class="button secondary">Ⅱ Pause</button><button id="step-game" class="button secondary">→ Step</button><button id="move-now" class="button secondary">Move now</button></div><label class="inline-field" for="view-delay">Pause between AI moves <span><input id="view-delay" type="number" min="0" max="10" step="0.25" value="0.5"> sec</span></label><div class="quiet-actions"><button id="resign-game">Resign</button><button id="draw-game">Agree a draw</button><a id="export-game" href="#">Export game ↗</a></div></div>
+        <div class="panel-section game-controls"><label class="auto-play-option"><input id="auto-play" type="checkbox" checked> Auto-play AI turns</label><p id="ai-play-status" class="small-muted" role="status">Connecting to live game…</p><div class="control-row"><button id="pause-game" class="button secondary">Ⅱ Pause AI</button><button id="step-game" class="button secondary">→ One turn</button><button id="move-now" class="button secondary" title="Finish the current search early using its best move">Move now</button></div><label class="inline-field" for="view-delay">Pause between AI moves <span><input id="view-delay" type="number" min="0" max="10" step="0.25" value="0.5"> sec</span></label><div class="quiet-actions"><button id="resign-game">Resign</button><button id="draw-game">Agree a draw</button><a id="export-game" href="#">Export game ↗</a></div></div>
         <div class="panel-section moves-section"><div class="section-heading"><span class="eyebrow">THE STORY SO FAR</span><span class="counter" id="move-count">0 moves</span></div><div id="move-list" class="move-list" aria-label="Move history"><div class="empty-state"><span>↗</span>Your first move starts the story.</div></div><div class="replay-controls"><button id="replay-start" aria-label="First position">|←</button><button id="replay-prev" aria-label="Previous position">←</button><span id="replay-label">Live game</span><button id="replay-next" aria-label="Next position">→</button><button id="replay-live" aria-label="Return to live game">→|</button></div></div>
         <details class="evaluation-panel" id="evaluation-panel"><summary>What makes this position valuable? <span>⌄</span></summary><p class="small-muted">Live position · contributions shown from White's perspective. Positive values favor White.</p><div id="evaluation-values" class="evaluation-values"></div></details>
         <div class="tip-card"><span>MAKE ROOM FOR POSSIBILITY</span><p>A small move can change a very big board. Use <strong>Play view</strong> to get closer.</p></div>
@@ -115,6 +115,6 @@
     </form>
   </dialog>
   <dialog id="promotion-dialog" class="promotion-dialog"><h2>A new possibility.</h2><p>Choose your promotion.</p><div id="promotion-options"></div></dialog>
-  <script type="module" src="/static/app.js"></script>
+  <script type="module" src="/static/app.js?v=20261120-live"></script>
 </body>
 </html>

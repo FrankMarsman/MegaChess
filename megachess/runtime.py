@@ -255,6 +255,12 @@ class Runtime:
                     game["paused"] = True
                     self.tracked.discard(game_id)
                 elif action == "resume":
+                    self.tracked.add(game_id)
+                    if not game.get("paused"):
+                        return game
+                    # A paused single-step search belongs to the old revision.
+                    # Cancel it before restarting continuous play.
+                    self._cancel(game_id)
                     game["paused"] = False
                     game.pop("search_error", None)
                     self.tracked.add(game_id)

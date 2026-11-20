@@ -26,7 +26,7 @@ The default data location is `~/Library/Application Support/MegaChess` on macOS,
 
 ## Play
 
-Choose Human or an AI separately for White and Black. Two Humans means taking turns on the same keyboard. AI versus AI supports pause, single step, and an independent viewing delay. New games preserve the previous board in Saved Games.
+Choose Human or an AI separately for White and Black. Two Humans means taking turns on the same keyboard. **Auto-play AI turns** runs AI versus AI continuously. **Pause AI / Resume AI** stops and restarts the match; **One turn** searches exactly one move while paused. **Move now** only finishes the current search early. The status below Auto-play shows thinking time, waiting, and paused states. Resuming returns the board to Live. An independent viewing delay controls the gap between AI turns. Live updates retry stalled requests and reconnect when the browser regains focus. New games preserve the previous board in Saved Games.
 
 Use Fit for an overview, Play View for readable pieces, the wheel or pinch to zoom, and drag to pan. A small overview map helps navigate. Click a piece and then a legal destination. The board toolbar can locate either king or the last move. Arrow keys navigate squares, Enter selects/moves, and Escape cancels selection.
 
@@ -44,7 +44,7 @@ Compact army summaries above the board show remaining pieces by symbol and count
 
 Frontend bookkeeping checks use Node's built-in test runner (development only): `node --test tests/*.test.mjs`.
 
-Use the **Game timeline** slider below the board to inspect any recorded step, including the starting position. **Play** loops through the history at 0.1 seconds per move by default and turns into **Stop**, which freezes the displayed step. Adjust **Seconds / move** (0.05–10 seconds) to change the replay speed, including while playback is running. The loop includes new moves as they are recorded. Scrubbing or using the other replay controls stops playback; **Live** returns to the latest position. Replay only changes the view, so an AI match can keep playing while you watch its history. Captured-piece trays and position statistics follow the displayed step.
+Use the **Game timeline** slider below the board to inspect any recorded step, including the starting position. **Replay** loops through the history at 0.1 seconds per move by default and turns into **Stop replay**, which freezes the displayed step. Adjust **Seconds / move** (0.05–10 seconds) to change the replay speed, including while playback is running. The loop includes new moves as they are recorded. Scrubbing or using the other replay controls stops playback; **Live** returns to the latest position. Replay only changes the view, so an AI match can keep playing while you watch its history. Captured-piece trays and position statistics follow the displayed step.
 
 ### Rules
 
